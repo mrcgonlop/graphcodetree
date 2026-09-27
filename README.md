@@ -13,33 +13,48 @@ A text file is a linear byte sequence. A code graph is its **semantic skeleton**
 - **Live incremental updates** — tree-sitter re-parses the changed range, the extractor diffs against the previous keyed snapshot, only tiny deltas flow over the wire
 - **Polyglot normalization** — `function_item` (Rust), `function_definition` (Python), `function_declaration` (TypeScript) all collapse to `NodeKind::Function`
 
-## Architecture
+## Architecture (target)
+
+The full pipeline has four layers. Extraction produces keyed data; the store interns keys into runtime IDs and applies deltas; enriching layers add semantic edges; the server broadcasts to clients via WebSocket.
 
 ```
-                  ┌─────────────┐
-  file edit ─────▶│ cg-extract  │─── FileGraph (keyed, self-contained)
-                  └─────────────┘
+                 ┌──────────────┐
+file edit ──────▶│  cg-extract  │─── FileGraph (NodeKey-based, self-contained)
+                 └──────┬───────┘
                         │
-                        ▼ cg-ir types
-                  ┌─────────────┐
-                  │  cg-store   │─── intern keys → NodeId/EdgeId
-                  │             │─── apply deltas → GraphDelta stream
-                  └─────────────┘
+                 ┌──────▼──────���┐
+                 │  cg-resolve  │─── cross-file name resolution
+                 └──────┬───────┘
+                        │
+                 ┌──────▼───────┐
+                 │  cg-enrich   │─── call graphs, impls, types (semantic, lazy)
+                 └──────┬───────┘
+                        │
+                 ┌──────▼───────┐
+                 │   cg-store   │─── intern keys → NodeId/EdgeId, versioned apply
+                 └──────┬───────┘
                         │
           ┌─────────────┼─────────────┐
           ▼             ▼             ▼
-   LLM context map   Browser UI   EditIntent compiler
-   (cg-project)
+   cg-project      cg-server      cg-intent
+   (LLM maps)   (axum WS + web)  (EditIntent → WorkspaceEdit)
 ```
 
-## Crates
+## Pipeline & Status
 
-| Crate | Path | Purpose |
-|-------|------|---------|
-| `cg-ir` | `crates/ir/` | Canonical IR types: `NodeKind`, `EdgeKind`, `NodeKey`, `EdgeKey`, `Span`, `GraphDelta`, `EditIntent`. Shared by every crate. Zero runtime dependencies. |
-| `cg-extract` | `crates/extract/` | Tree-sitter → keyed `FileGraph` extraction. Two-pass: first registers all definitions, then resolves call sites. Produces `KeyOp` diffs against a previous snapshot. |
-| `cg-store` | `crates/store/` | Versioned in-memory store. Interns stable keys → compact IDs, builds containment and kind indices, applies deltas, projects snapshots through a `ViewSpec`. |
-| `cg-project` | `crates/project/` | Renders the LLM context map (aider-style but with inline node IDs). Deterministic ordering, module-chunked output, token-budget-aware via PageRank-based pruning. |
+| Layer | Crate | Path | Status | What's done |
+|-------|-------|------|--------|-------------|
+| **Schema** | `cg-ir` | `crates/ir/` | ✅ Complete | NodeKind, EdgeKind, NodeKey, EdgeKey, Span, NodeAttrs, GraphDelta, GraphOp, EditIntent, IntentOutcome, ViewSpec — full serde round-trip, zero runtime deps |
+| **Structure** | `cg-extract` | `crates/extract/` | 🟡 Mostly done | Rust tree-walk extractor: two-pass def registration + call resolution, stable keyed identity, same-file scope resolution, import flattening, incremental `diff()` |
+| **Symbols** | `cg-resolve` | ❌ Not started | Empty | Cross-file crate paths, `mod foo;` joining, method receiver resolution |
+| **Semantic** | `cg-enrich` | ❌ Not started | Empty | Full call graph construction, impl/trait hierarchy, type inference hints |
+| **Store** | `cg-store` | 🔴 Stubs only | Stubs | `GraphStore` struct + method signatures exist, no interning, no `apply()`, no `snapshot()` |
+| **Intents** | `cg-intent` | ❌ Not started | Empty | EditIntent validation rules, span→text compilation, legality table |
+| **Projection** | `cg-project` | 🔴 Stubs only | Stubs | `DetailLevel` enum + `render_map()` signature exist, no implementation |
+| **Server** | `cg-server` | ❌ Not started | Empty | axum WebSocket server, file watcher (notify), tool API for LLM agents |
+| **CLI** | `cg-cli` | ❌ Not started | Empty | `codegraph index`, `codegraph map`, `codegraph serve` commands |
+| **Web client** | `web/` | ❌ Not started | Empty | TypeScript normalized store, Cytoscape.js graph renderer, Monaco code pane |
+| **Queries** | `queries/` | 🟡 Partial | Only `rust.scm` | tree-sitter query files per language for capture-based extraction |
 
 ## Getting Started
 
@@ -168,9 +183,36 @@ This provides an alternative, query-driven extraction path alongside the direct 
 
 The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScript**, **TSX**, **JavaScript**, **Go**, **C**, **C++**, **Java**. Extractors beyond Rust are forthcoming.
 
-## Status
+## Roadmap
 
-Early development. The extraction crate (`cg-extract`) is functional for Rust with a tree-walk extractor. The store (`cg-store`) and project renderer (`cg-project`) have APIs sketched but not yet implemented. The intent pipeline (graph edit → text edit compilation) is designed in the IR but not wired.
+### Phase 1 — Structure extraction (current)
+- [x] `cg-ir`: full canonical schema with serde round-trip
+- [x] `cg-extract`: Rust tree-walk extractor (two-pass, keyed, same-file resolution)
+- [x] Incremental `diff()` producing `KeyOp` streams
+- [x] `queries/rust.scm`: tree-sitter query file for Rust
+- [ ] **MVP demo**: one-shot static graph from a Rust codebase → JSON → HTML visualizer
+
+### Phase 2 — Multi-file & cross-file
+- [ ] `cg-resolve`: `mod foo;` joining, `use` path resolution, crate graph
+- [ ] `cg-store`: NodeKey → NodeId interning, versioned `apply()`, `snapshot()`
+- [ ] Directory-walking CLI (`codegraph index`)
+- [ ] Extract Python, TypeScript, Go via tree-sitter queries
+
+### Phase 3 — Semantic enrichment
+- [ ] `cg-enrich`: full call graph (cross-file `Calls`), impl/trait wiring, type hints
+- [ ] `cg-project`: `DetailLevel` renderer, PageRank-based token budgeting
+- [ ] `cg-intent`: EditIntent validation, span→text compilation, legality table
+
+### Phase 4 — Server & real-time
+- [ ] `cg-server`: axum WebSocket server, file watcher (notify), delta broadcast
+- [ ] `web/`: TypeScript normalized store, Cytoscape.js graph canvas, Monaco code pane
+- [ ] `codegraph serve`: CLI command to start the dev server
+- [ ] Live incremental re-extraction on file save
+
+### Phase 5 — LLM integration
+- [ ] Tool API: LLM agents can call `expand()`, submit `EditIntent`, receive `WorkspaceEdit`
+- [ ] Aider-style text map with inline `[n:ID]` references
+- [ ] Semantic zoom: collapse modules into summary edges within token budget
 
 ## License
 

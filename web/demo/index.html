@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CodeGraph Snapshot</title>
+<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; display: flex; height: 100vh; overflow: hidden; }
+#sidebar { width: 340px; min-width: 340px; background: #1a1b26; color: #c0caf5; display: flex; flex-direction: column; border-right: 1px solid #2f3346; z-index: 10; }
+#sidebar header { padding: 16px 18px 12px; border-bottom: 1px solid #2f3346; }
+#sidebar header h1 { font-size: 16px; font-weight: 600; color: #7aa2f7; margin-bottom: 4px; }
+#sidebar header p { font-size: 12px; color: #565f89; }
+#sidebar header #stats { font-size: 11px; color: #565f89; margin-top: 6px; line-height: 1.5; }
+#filters { padding: 10px 18px; border-bottom: 1px solid #2f3346; display: flex; flex-wrap: wrap; gap: 6px; }
+#filters label { font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 8px; border-radius: 4px; background: #292e42; color: #a9b1d6; }
+#filters label:hover { background: #363b54; }
+#filters input[type="checkbox"] { accent-color: #7aa2f7; }
+#search-box { padding: 10px 18px; border-bottom: 1px solid #2f3346; }
+#search-box input { width: 100%; padding: 6px 10px; border: 1px solid #2f3346; border-radius: 4px; background: #1f2335; color: #c0caf5; font-size: 12px; outline: none; }
+#search-box input:focus { border-color: #7aa2f7; }
+#node-details { flex: 1; overflow-y: auto; padding: 12px 18px; font-size: 12px; line-height: 1.6; }
+#node-details .empty { color: #565f89; font-style: italic; }
+#node-details .node-kind { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+#node-details .node-label { font-size: 15px; font-weight: 600; color: #e0e4f0; margin-bottom: 4px; }
+#node-details .node-signature { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; color: #73daca; background: #1f2335; padding: 6px 10px; border-radius: 4px; margin: 6px 0 10px; white-space: pre-wrap; }
+#node-details .node-file { color: #565f89; font-size: 11px; }
+#node-details .node-doc { color: #9ece6a; margin-top: 6px; font-style: italic; }
+#node-details .node-attrs { color: #565f89; font-size: 11px; margin-top: 6px; }
+#node-details .edge-list { margin-top: 10px; }
+#node-details .edge-list h4 { font-size: 11px; font-weight: 600; color: #565f89; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+#node-details .edge-list .edge-item { padding: 2px 0; color: #a9b1d6; }
+#graph-container { flex: 1; background: #0f0f1a; position: relative; }
+#graph-container .tooltip { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: #565f89; font-size: 11px; }
+.kind-function { background: #7aa2f7; }
+.kind-struct  { background: #9ece6a; }
+.kind-enum    { background: #bb9af7; }
+.kind-trait   { background: #f7768e; }
+.kind-impl_block { background: #e0af68; }
+.kind-module  { background: #2ac3de; }
+.kind-constant{ background: #ff9e64; }
+.kind-static  { background: #ff9e64; }
+.kind-type_alias { background: #73daca; }
+.kind-macro   { background: #f7768e; }
+.kind-enum_variant { background: #bb9af7; }
+.kind-field   { background: #565f89; }
+.kind-file    { background: #414868; }
+</style>
+</head>
+<body>
+
+
+<div id="sidebar">
+  <header>
+    <h1>⬡ CodeGraph</h1>
+    <p>Static snapshot viewer</p>
+    <div id="stats">Loading…</div>
+  </header>
+  <div id="filters"></div>
+  <div id="search-box">
+    <input type="text" id="search" placeholder="Filter nodes by name…" />
+  </div>
+  <div id="node-details">
+    <div class="empty">Click a node to see details</div>
+  </div>
+</div>
+<div id="graph-container">
+  <div class="tooltip">Scroll to zoom · Drag to pan · Click for details</div>
+
+<script>
+(function() {
+  const KIND_COLORS = {
+    function: '#7aa2f7', method: '#7aa2f7', struct: '#9ece6a',
+    enum: '#bb9af7', enum_variant: '#bb9af7', trait: '#f7768e',
+    impl_block: '#e0af68', module: '#2ac3de', constant: '#ff9e64',
+    static: '#ff9e64', type_alias: '#73daca', macro: '#f7768e',
+    field: '#565f89', file: '#414868',
+  };
+  const KIND_ORDER = [
+    'function','method','struct','enum','enum_variant','trait','impl_block',
+    'module','constant','static','type_alias','macro','field','file'
+  ];
+
+  let cy, snapshot;
+
+  function nodeId(key) {
+    if (key.key === 'symbol') return key.file + '::' + key.qualified_name;
+    return key.file + '::anon#' + key.ordinal;
+  }
+
+  function buildElements(snapshot) {
+    const nodes = [], edges = [], added = new Set();
+    for (const n of snapshot.nodes) {
+      if (n.key.key !== 'symbol') continue;
+      const id = nodeId(n.key);
+      if (added.has(id)) continue;
+      added.add(id);
+      nodes.push({ data: {
+        id, label: n.label, kind: n.kind, color: KIND_COLORS[n.kind] || '#565f89',
+        qualifiedName: n.key.qualified_name, file: n.file,
+        signature: n.attrs.signature, doc: n.attrs.doc,
+        visibility: n.attrs.visibility,
+      }});
+    }
+    for (const e of snapshot.edges) {
+      const srcId = nodeId(e.source), tgtId = nodeId(e.target);
+      if (!added.has(srcId) || !added.has(tgtId)) continue;
+      edges.push({ data: {
+        id: srcId + '→' + tgtId, source: srcId, target: tgtId,
+        kind: e.kind, weight: e.weight,
+      }});
+    }
+    return { nodes, edges };
+  }
+
+  function render(snapshot) {
+    const el = buildElements(snapshot);
+    const container = document.getElementById('graph-container');
+    if (cy) cy.destroy();
+    container.innerHTML = '<div class="tooltip">Scroll to zoom · Drag to pan · Click for details</div>';
+
+    cy = cytoscape({
+      container, elements: [...el.nodes, ...el.edges],
+      style: [
+        { selector: 'node', style: { 'background-color': 'data(color)', label: 'data(label)', 'font-size': '10px', color: '#a9b1d6', 'text-valign': 'bottom', 'text-halign': 'center', 'text-margin-y': 6, width: 28, height: 28, 'border-width': 2, 'border-color': '#2f3346', 'border-opacity': 0.8 } },
+        { selector: 'edge', style: { width: 1.5, 'line-color': '#2f3346', 'target-arrow-color': '#565f89', 'target-arrow-shape': 'triangle', 'arrow-scale': 0.7, 'curve-style': 'bezier' } },
+        { selector: 'edge[kind = "calls"]', style: { 'line-color': '#f7768e', 'target-arrow-color': '#f7768e', width: 1.2 } },
+        { selector: 'edge[kind = "contains"]', style: { 'line-color': '#3b4261', 'target-arrow-color': '#3b4261', 'line-style': 'dotted', width: 0.8 } },
+        { selector: 'edge[kind = "defines"]', style: { 'line-color': '#73daca', 'target-arrow-color': '#73daca', 'line-style': 'dashed', width: 0.8 } },
+        { selector: 'edge[kind = "imports"]', style: { 'line-color': '#2ac3de', 'target-arrow-color': '#2ac3de', 'line-style': 'dashed', width: 0.6 } },
+        { selector: ':selected', style: { 'border-width': 3, 'border-color': '#e0af68' } },
+      ],
+      layout: { name: 'cose', animate: true, gravity: 0.8, numIter: 1000, idealEdgeLength: 120, padding: 40 },
+      wheelSensitivity: 0.4,
+    });
+
+    cy.on('tap', 'node', function(evt) { showDetails(evt.target.data()); });
+    cy.on('mouseover', 'node', function(evt) { evt.target.style('border-color', '#e0af68'); });
+    cy.on('mouseout', 'node', function(evt) { evt.target.style('border-color', '#2f3346'); });
+
+    // Search
+    document.getElementById('search').addEventListener('input', function() {
+      const q = this.value.toLowerCase();
+      cy.nodes().forEach(n => {
+        n.style('display', q === '' || n.data('label').toLowerCase().includes(q) || n.data('qualifiedName').toLowerCase().includes(q) ? 'element' : 'none');
+      });
+    });
+
+    // Kind filters
+    function applyKindFilters() {
+      const checked = {};
+      document.querySelectorAll('#filters input[type="checkbox"]').forEach(cb => { checked[cb.value] = cb.checked; });
+      const anyUnchecked = Object.values(checked).some(v => !v);
+      cy.nodes().forEach(n => {
+        n.style('display', anyUnchecked ? (checked[n.data('kind')] !== false ? 'element' : 'none') : 'element');
+      });
+    }
+
+    const kinds = new Set();
+    snapshot.nodes.forEach(n => { if (n.key.key === 'symbol') kinds.add(n.kind); });
+    const filterDiv = document.getElementById('filters');
+    filterDiv.innerHTML = '';
+    for (const kind of KIND_ORDER) {
+      if (!kinds.has(kind)) continue;
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.value = kind; cb.checked = true;
+      cb.addEventListener('change', applyKindFilters);
+      label.appendChild(cb);
+      const span = document.createElement('span');
+      span.textContent = kind.replace('_', ' ');
+      span.style.color = KIND_COLORS[kind] || '#fff';
+      label.appendChild(span);
+      filterDiv.appendChild(label);
+    }
+  }
+
+
+
+  function showDetails(data) {
+    const el = document.getElementById('node-details');
+    let html = '<span class="node-kind" style="background:' + (KIND_COLORS[data.kind] || '#565f89') + '">' + data.kind + '</span>';
+    html += '<div class="node-label">' + esc(data.label) + '</div>';
+    if (data.signature) html += '<div class="node-signature">' + esc(data.signature) + '</div>';
+    html += '<div class="node-file"> ' + esc(data.file) + '</div>';
+    if (data.visibility && data.visibility !== 'private')
+      html += '<div class="node-attrs">visibility: ' + data.visibility + '</div>';
+    if (data.doc) html += '<div class="node-doc"> ' + esc(data.doc) + '</div>';
+
+    if (cy) {
+      const nodeRef = cy.getElementById(data.id);
+      if (nodeRef) {
+        const connected = nodeRef.connectedEdges();
+        if (connected.length > 0) {
+          html += '<div style="margin-top:10px"><h4 style="font-size:11px;font-weight:600;color:#565f89;margin-bottom:4px;text-transform:uppercase">Edges (' + connected.length + ')</h4>';
+          connected.forEach(e => {
+            const other = e.source().id() === data.id ? e.target() : e.source();
+            const dir = e.source().id() === data.id ? '→' : '←';
+            html += '<div style="padding:2px 0;color:#a9b1d6;font-size:11px"><span style="color:#bb9af7">' + e.data('kind') + '</span> ' + dir + ' ' + esc(other.data('label')) + '</div>';
+          });
+          html += '</div>';
+        }
+      }
+    }
+    el.innerHTML = html;
+  }
+
+  function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  fetch('graph.json')
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(data => {
+      snapshot = data;
+      const s = data.stats;
+      document.getElementById('stats').innerHTML = data.file_count + ' files · ' + s.total_nodes + ' defs · ' + s.total_edges + ' edges<br>' + s.function_count + ' fns · ' + s.struct_count + ' structs · ' + s.trait_count + ' traits · ' + s.calls_edge_count + ' calls';
+      render(data);
+    })
+    .catch(err => {
+      document.getElementById('stats').textContent = 'Error loading graph.json';
+      document.getElementById('node-details').innerHTML = '<div class="empty">Failed to load graph.json: ' + esc(err.message) + '<br><br>Run <code>codegraph snapshot . &gt; graph.json</code> then reload.</div>';
+    });
+})();
+</script>
+</body>
+</html>

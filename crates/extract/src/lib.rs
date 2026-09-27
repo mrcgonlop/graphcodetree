@@ -20,9 +20,11 @@
 //! to re-key.
 
 mod rust;
+mod snapshot;
 mod text;
 
 pub use rust::RustExtractor;
+pub use snapshot::flatten;
 
 use cg_ir::{EdgeKind, EdgeKey, Lang, NodeAttrs, NodeKey, NodeKind, Span};
 use serde::{Deserialize, Serialize};

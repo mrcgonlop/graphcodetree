@@ -9,6 +9,7 @@ mod delta;
 mod edge;
 mod id;
 mod intent;
+mod merge;
 mod node;
 mod view;
 
@@ -16,6 +17,7 @@ pub use delta::{GraphDelta, GraphOp};
 pub use edge::{Edge, EdgeKind};
 pub use id::{EdgeId, EdgeKey, NodeId, NodeKey};
 pub use intent::{EditIntent, EditRequest, IntentError, IntentOutcome, TextEdit, WorkspaceEdit};
+pub use merge::{GraphEdge, GraphNode, Snapshot, SnapshotStats};
 pub use node::{Node, NodeAttrs, NodeKind, Visibility};
 pub use view::ViewSpec;
 

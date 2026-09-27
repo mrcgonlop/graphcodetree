@@ -1,0 +1,15 @@
+[package]
+name = "cg-cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "codegraph"
+path = "src/main.rs"
+
+[dependencies]
+cg-ir             = { path = "../ir" }
+cg-extract        = { path = "../extract" }
+walkdir           = "2"
+serde_json        = { workspace = true }
+clap              = { workspace = true }
