@@ -1,0 +1,12 @@
+[package]
+name = "cg-ir"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde      = { workspace = true }
+serde_json = { workspace = true }
+thiserror  = { workspace = true }
+
+# Later: feature-gate `#[cfg_attr(feature = "ts", derive(ts_rs::TS))]` on the
+# wire types to generate the TS client's bindings from this schema.

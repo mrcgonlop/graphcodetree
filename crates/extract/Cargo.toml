@@ -1,0 +1,13 @@
+# crates/extract/Cargo.toml
+[package]
+name = "cg-extract"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cg-ir            = { path = "../ir" }
+tree-sitter      = { workspace = true }
+tree-sitter-rust = "0.23"   # add to workspace deps; pin grammar versions — kind names drift
+serde            = { workspace = true }
+serde_json       = { workspace = true }
+thiserror        = { workspace = true }
