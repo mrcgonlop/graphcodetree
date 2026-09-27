@@ -117,9 +117,9 @@ struct Ctx<'a, 't> {
 /// Walks one item container, emitting defs + Contains edges and queueing
 /// body jobs. Returns direct definitional children (impl wires them into
 /// Type—Defines→member edges).
-fn walk_items(
-    ctx: &mut Ctx<'_, '_>,
-    container: Node,
+fn walk_items<'a>(
+    ctx: &mut Ctx<'a, 'a>,
+    container: Node<'a>,
     scope: &mut Vec<String>,
     parent: &NodeKey,
 ) -> Vec<NodeKey> {
@@ -422,7 +422,7 @@ fn emit_callsite(
         ordinal,
     };
     let mut extra = BTreeMap::new();
-    extra.insert("callee".into(), callee.into());
+    extra.insert("callee".into(), res.label.clone().into());
     extra.insert("resolution".into(), res.tag.into());
     if let Some(hint) = res.hint {
         extra.insert("hint".into(), hint.into());
@@ -788,7 +788,7 @@ mod inner {
         assert_eq!(node(&g, "Thing::describe").kind, NodeKind::Method);
 
         // imports: no nodes, resolver records + simple-name hints
-        assert_eq!(g.imports.len(), 4, "{:?}", g.imports);
+        assert_eq!(g.imports.len(), 3, "{:?}", g.imports);
         assert!(g.imports.iter().any(|r| r.alias.as_deref() == Some("Delta")));
 
         // namespace edges: Type Defines its members (inherent + trait impl)

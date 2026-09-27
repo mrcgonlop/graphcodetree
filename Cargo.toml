@@ -1,8 +1,3 @@
-[package]
-name = "graphcodetree"
-version = "0.1.0"
-edition = "2024"
-
 [workspace]
 resolver = "2"
 members = ["crates/*"]
@@ -18,3 +13,6 @@ axum        = "0.8"
 notify      = "7"
 clap        = { version = "4", features = ["derive"] }
 tracing     = "0.1"
+
+# Language-specific grammars — pin these tightly
+tree-sitter-rust = "0.23"

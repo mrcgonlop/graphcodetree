@@ -42,13 +42,14 @@ pub enum NodeKey {
     },
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct EdgeKey {
     pub kind: EdgeKind,
     pub source: NodeKey,
     pub target: NodeKey,
     /// Multiple edges of the same kind between the same pair
     /// (e.g. two call sites to one callee).
-    #[serde(default)]
     pub ordinal: u32,
+    //#[serde(default)]
+    //pub nth: usize,
 }

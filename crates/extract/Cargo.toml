@@ -1,4 +1,3 @@
-# crates/extract/Cargo.toml
 [package]
 name = "cg-extract"
 version = "0.1.0"
