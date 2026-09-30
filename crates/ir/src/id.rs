@@ -1,5 +1,6 @@
 use crate::{EdgeKind, Lang, NodeKind};
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::path::PathBuf;
 
 /// Compact runtime identity, interned per store. This is what appears on
@@ -8,9 +9,21 @@ use std::path::PathBuf;
 #[serde(transparent)]
 pub struct NodeId(pub u32);
 
+impl fmt::Display for NodeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "N{}", self.0)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct EdgeId(pub u32);
+
+impl fmt::Display for EdgeId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "E{}", self.0)
+    }
+}
 
 /// Stable identity that survives edits and re-runs. The interner assigns
 /// `NodeId`s from `NodeKey`s; the key is what lets re-extraction after an

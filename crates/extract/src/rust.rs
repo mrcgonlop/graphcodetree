@@ -19,10 +19,11 @@
 
 use crate::text::{collapse_ws, doc_line, first_paragraph, signature_of};
 use crate::{
-    EdgeSpec, ExtractError, Extractor, FileGraph, ImportRecord, ModDecl, NodeSpec, SourceFile,
+    ExtractError, Extractor, FileGraph, SourceFile,
 };
 use cg_ir::{
-    EdgeKind, EdgeKey, Lang, NodeAttrs, NodeKey, NodeKind, Point, Span, Visibility,
+    EdgeKind, EdgeKey, EdgeSpec, ImportRecord, Lang, ModDecl, NodeAttrs, NodeKey, NodeKind, NodeSpec,
+    Point, Span, Visibility,
 };
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -605,7 +606,7 @@ fn unique_simple(ctx: &Ctx<'_, '_>, name: &str) -> Option<NodeKey> {
 
 fn add_edge(ctx: &mut Ctx<'_, '_>, kind: EdgeKind, source: NodeKey, target: NodeKey, span: Option<Span>) {
     let key = EdgeKey { kind, source: source.clone(), target: target.clone(), ordinal: 0 };
-    ctx.graph.edges.insert(key, EdgeSpec { kind, source, target, span, weight: 1 });
+    ctx.graph.edges.insert(key, EdgeSpec { kind, span, weight: 1 });
 }
 
 fn visibility_of(n: Node, src: &[u8]) -> Visibility {
@@ -804,7 +805,7 @@ mod inner {
     #[test]
     fn resolves_same_file_calls() {
         let g = extract(FIXTURE);
-        let calls: Vec<_> = g.edges.values().filter(|e| e.kind == EdgeKind::Calls).collect();
+        let calls: Vec<_> = g.edges.iter().filter(|(k, _)| k.kind == EdgeKind::Calls).collect();
         assert_eq!(calls.len(), 4, "{calls:#?}");
 
         // helper() from Thing::new resolves even though helper is defined later
@@ -815,15 +816,15 @@ mod inner {
             ast_kind: "call_expression".into(),
             ordinal: 0,
         };
-        assert!(calls.iter().any(|e| e.source == site && e.target == helper));
+        assert!(calls.iter().any(|(k, _)| k.source == site && k.target == helper));
 
         // self.log() inside bump → Thing::log
         let log = def_key(&g, "Thing::log");
-        assert!(calls.iter().any(|e| e.target == log));
+        assert!(calls.iter().any(|(k, _)| k.target == log));
 
         // Thing::new() scoped path from top_level
         let new2 = def_key(&g, "Thing::new");
-        assert!(calls.iter().any(|e| e.target == new2));
+        assert!(calls.iter().any(|(k, _)| k.target == new2));
 
         // unresolved-but-recorded: method on local, std path, macro
         let sites: Vec<_> = g.nodes.values().filter(|n| n.kind == NodeKind::CallSite).collect();

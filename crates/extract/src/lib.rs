@@ -26,7 +26,7 @@ mod text;
 pub use rust::RustExtractor;
 pub use snapshot::flatten;
 
-use cg_ir::{EdgeKind, EdgeKey, Lang, NodeAttrs, NodeKey, NodeKind, Span};
+use cg_ir::{EdgeKey, EdgeSpec, ImportRecord, KeyOp, Lang, ModDecl, NodeKey, NodeSpec};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -52,27 +52,6 @@ pub enum ExtractError {
 pub trait Extractor: Send + Sync {
     fn lang(&self) -> Lang;
     fn extract(&self, file: &SourceFile) -> Result<FileGraph, ExtractError>;
-}
-
-/// A node with stable identity and no runtime ID. The store mints `NodeId`s.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct NodeSpec {
-    pub kind: NodeKind,
-    pub label: String,
-    /// Original tree-sitter kind ("function_item") — round-trip fidelity.
-    pub ast_kind: String,
-    pub span: Option<Span>,
-    pub is_definition: bool,
-    pub attrs: NodeAttrs,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct EdgeSpec {
-    pub kind: EdgeKind,
-    pub source: NodeKey,
-    pub target: NodeKey,
-    pub span: Option<Span>,
-    pub weight: u32,
 }
 
 /// Everything one file contributes to the graph, keyed and self-contained.
@@ -106,31 +85,7 @@ impl FileGraph {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ImportRecord {
-    pub path: Vec<String>,
-    pub alias: Option<String>,
-    pub glob: bool,
-    pub span: Span,
-}
-
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-pub struct ModDecl {
-    pub name: String,
-    pub span: Span,
-}
-
-/// The interner-free counterpart of `GraphOp`. The store translates these
-/// by interning keys; op order from `diff` is apply-safe (upsert nodes →
-/// upsert edges → remove edges → remove nodes, so edges never dangle).
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "op", rename_all = "snake_case")]
-pub enum KeyOp {
-    UpsertNode { key: NodeKey, spec: NodeSpec },
-    RemoveNode { key: NodeKey },
-    UpsertEdge { key: EdgeKey, spec: EdgeSpec },
-    RemoveEdge { key: EdgeKey },
-}
+// ImportRecord and ModDecl are defined in cg-ir and re-exported from there.
 
 /// Keyed set difference. Identity churn (remove+add) only happens when a
 /// construct is genuinely deleted or renamed; span/attr changes are upserts.

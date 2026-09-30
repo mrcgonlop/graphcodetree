@@ -4,6 +4,3 @@ pub enum DetailLevel { Modules, Definitions, Bodies }
 /// unambiguously in expand()/EditIntent calls. Deterministic ordering,
 /// stable per-module chunks (prompt-cache friendly).
 pub fn render_map(store: &GraphStore, view: &ViewSpec, level: DetailLevel, budget: usize) -> String;
-
-/// Personalized PageRank seeded from touched files selects which defs earn
-/// tokens when the map exceeds budget; the rest is reachable via expand().

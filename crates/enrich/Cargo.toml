@@ -1,9 +1,9 @@
 [package]
-name = "cg-store"
+name = "cg-enrich"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 cg-ir = { path = "../ir" }
-thiserror.workspace = true
-serde.workspace = true
+cg-store = { path = "../store" }
+tracing.workspace = true

@@ -13,13 +13,34 @@ mod merge;
 mod node;
 mod view;
 
-pub use delta::{GraphDelta, GraphOp};
+pub use delta::{EdgeSpec, GraphDelta, GraphOp, KeyOp, NodeSpec};
 pub use edge::{Edge, EdgeKind};
 pub use id::{EdgeId, EdgeKey, NodeId, NodeKey};
 pub use intent::{EditIntent, EditRequest, IntentError, IntentOutcome, TextEdit, WorkspaceEdit};
 pub use merge::{GraphEdge, GraphNode, Snapshot, SnapshotStats};
 pub use node::{Node, NodeAttrs, NodeKind, Visibility};
 pub use view::ViewSpec;
+
+/// Record of a single import/use declaration.
+/// Stored per-file for cross-file resolution in cg-resolve and cg-enrich.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ImportRecord {
+    /// Path segments, e.g. `["crate", "foo", "bar"]`
+    pub path: Vec<String>,
+    /// Optional local alias, e.g. `use foo as bar` → alias="bar"
+    pub alias: Option<String>,
+    /// Glob import, e.g. `use foo::*`
+    pub glob: bool,
+    pub span: Span,
+}
+
+/// Declaration of a submodule, e.g. `mod foo;`
+/// cg-enrich resolves these to sibling files to join the module tree.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct ModDecl {
+    pub name: String,
+    pub span: Span,
+}
 
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
