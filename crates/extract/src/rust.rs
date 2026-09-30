@@ -373,31 +373,123 @@ fn emit_def(
 
 /// DFS for call sites. Nested items are skipped (their calls belong to
 /// them); nested *items* in fn bodies are a known v1 gap — rare in practice.
+///
+/// Maintains a binding context so data-flow edges can be emitted:
+/// when a `let` binding or `=` assignment captures a call result, subsequent
+/// calls that pass that variable as an argument get a `flows_from` extra
+/// pointing back to the producing call's ordinal.
 fn extract_calls(ctx: &mut Ctx<'_, '_>, root: Node, ancestor: &NodeKey, scope: &[String]) {
-    let mut ordinal = 0u32;
-    let mut stack = vec![root];
-    while let Some(n) = stack.pop() {
-        if n != root && is_item(n.kind()) {
-            continue;
+    let mut flat: Vec<tree_sitter::Node> = Vec::new();
+    {
+        let mut walk_stack = vec![root];
+        while let Some(n) = walk_stack.pop() {
+            if n != root && is_item(n.kind()) {
+                continue;
+            }
+            flat.push(n);
+            let mut cur = n.walk();
+            let children: Vec<_> = n.named_children(&mut cur).collect();
+            for c in children.into_iter().rev() {
+                walk_stack.push(c);
+            }
         }
+    }
+
+    let mut ordinal = 0u32;
+    let mut bindings: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
+    let mut pending_bindings: Vec<String> = Vec::new();
+
+    flat.sort_by_key(|n| n.start_byte());
+    for &n in &flat {
         match n.kind() {
-            "call_expression" => {
-                emit_callsite(ctx, ancestor, scope, ordinal, n);
+            "call_expression" | "macro_invocation" => {
+                if !pending_bindings.is_empty() {
+                    for name in pending_bindings.drain(..) {
+                        bindings.insert(name, ordinal);
+                    }
+                }
+                emit_callsite(ctx, ancestor, scope, ordinal, n, &bindings);
                 ordinal += 1;
             }
-            "macro_invocation" => {
-                emit_callsite(ctx, ancestor, scope, ordinal, n);
-                ordinal += 1;
+            "let_declaration" => {
+                let value_node = n.child_by_field_name("value");
+                let has_call_in_init = value_node
+                    .map(|v| v.kind() == "call_expression" || v.kind() == "macro_invocation")
+                    .unwrap_or(false);
+                if has_call_in_init {
+                    let pattern = n.child_by_field_name("pattern");
+                    if let Some(pat) = pattern {
+                        pending_bindings = extract_bound_names(pat, ctx.src);
+                    }
+                } else {
+                    pending_bindings.clear();
+                }
+            }
+            "assignment_expression" => {
+                let has_call_in_right = n.child_by_field_name("right")
+                    .map(|r| r.kind() == "call_expression" || r.kind() == "macro_invocation")
+                    .unwrap_or(false);
+                if has_call_in_right {
+                    let left = n.child_by_field_name("left");
+                    if let Some(l) = left {
+                        if l.kind() == "identifier" || l.kind() == "field_expression" {
+                            pending_bindings = vec![txt(&l, ctx.src).to_string()];
+                        }
+                    }
+                } else {
+                    pending_bindings.clear();
+                }
             }
             _ => {}
         }
-        let mut cur = n.walk();
-        let children: Vec<_> = n.named_children(&mut cur).collect();
-        for c in children.into_iter().rev() {
-            stack.push(c); // pre-order ≈ source order → stable ordinals
-        }
     }
 }
+
+fn extract_identifier_name(node: tree_sitter::Node, src: &[u8]) -> Option<String> {
+    match node.kind() {
+        "identifier" => Some(txt(&node, src).to_string()),
+        "field_expression" => {
+            if let Some(value) = node.child_by_field_name("value") {
+                extract_identifier_name(value, src)
+            } else {
+                None
+            }
+        }
+        "reference_expression" | "mut_reference_expression" => {
+            if let Some(inner) = node.child_by_field_name("value") {
+                extract_identifier_name(inner, src)
+            } else {
+                let mut cur = node.walk();
+                let first = node.named_children(&mut cur).next()
+                    .and_then(|c| extract_identifier_name(c, src));
+                first
+            }
+        }
+        "pointer_expression" => {
+            let mut cur = node.walk();
+            let first = node.named_children(&mut cur).next()
+                .and_then(|c| extract_identifier_name(c, src));
+            first
+        }
+        _ => None,
+    }
+}
+
+/// Extract names bound by a let pattern (single or tuple).
+fn extract_bound_names(node: tree_sitter::Node, src: &[u8]) -> Vec<String> {
+    match node.kind() {
+        "identifier" => vec![txt(&node, src).to_string()],
+        "tuple_pattern" => {
+            let mut cur = node.walk();
+            node.named_children(&mut cur)
+                .filter(|c| c.kind() == "identifier")
+                .map(|c| txt(&c, src).to_string())
+                .collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
 
 fn emit_callsite(
     ctx: &mut Ctx<'_, '_>,
@@ -405,6 +497,7 @@ fn emit_callsite(
     scope: &[String],
     ordinal: u32,
     call: Node,
+    bindings: &std::collections::HashMap<String, u32>,
 ) {
     let is_macro = call.kind() == "macro_invocation";
     let func = if is_macro {
@@ -427,6 +520,26 @@ fn emit_callsite(
     extra.insert("resolution".into(), res.tag.into());
     if let Some(hint) = res.hint {
         extra.insert("hint".into(), hint.into());
+    }
+    
+    // Track data flow: which arguments reference previously-bound variables.
+    if !bindings.is_empty() {
+        let mut flows = Vec::new();
+        let args_node = call.child_by_field_name("arguments");
+        if let Some(args) = args_node {
+            let mut cur = args.walk();
+            for (i, arg) in args.named_children(&mut cur).enumerate() {
+                let name = extract_identifier_name(arg, ctx.src);
+                if let Some(name) = name {
+                    if let Some(&producer_ordinal) = bindings.get(&name) {
+                        flows.push(format!("{i}->{producer_ordinal}"));
+                    }
+                }
+            }
+        }
+        if !flows.is_empty() {
+            extra.insert("flows_from".into(), flows.join(",").into());
+        }
     }
     ctx.graph.nodes.insert(
         key.clone(),
@@ -800,6 +913,49 @@ mod inner {
                 && k.source == thing
                 && k.target == member));
         }
+    }
+
+
+
+    #[test]
+    fn tracks_data_flow_across_bindings() {
+        let src = r#"
+fn test() {
+    let x = foo();
+    bar(x);
+    let y = baz();
+    qux(&y);
+    let (a, b) = foobar();
+    both(a, &b);
+}
+"#;
+        let file = SourceFile {
+            path: PathBuf::from("test.rs"),
+            lang: Lang::Rust,
+            text: src.to_string(),
+        };
+        let fg = RustExtractor.extract(&file).unwrap();
+
+        let flows: Vec<_> = fg.nodes.iter()
+            .filter(|(_, n)| n.kind == NodeKind::CallSite)
+            .filter(|(_, n)| n.attrs.extra.contains_key("flows_from"))
+            .collect();
+
+        assert!(!flows.is_empty(), "expected at least one flows_from annotation");
+        let bar_has_flow = fg.nodes.iter().any(|(_, n)| {
+            n.label == "bar" && n.attrs.extra.contains_key("flows_from")
+        });
+        assert!(bar_has_flow, "bar(x) should have flows_from");
+
+        let qux_has_flow = fg.nodes.iter().any(|(_, n)| {
+            n.label == "qux" && n.attrs.extra.contains_key("flows_from")
+        });
+        assert!(qux_has_flow, "qux(&y) should have flows_from");
+
+        let both_has_flow = fg.nodes.iter().any(|(_, n)| {
+            n.label == "both" && n.attrs.extra.contains_key("flows_from")
+        });
+        assert!(both_has_flow, "both(a, &b) should have flows_from");
     }
 
     #[test]

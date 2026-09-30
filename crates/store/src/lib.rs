@@ -173,6 +173,10 @@ impl GraphStore {
     pub fn node(&self,id:NodeId)->Option<&Node>{self.nodes.get(&id)}
     pub fn edge(&self,id:EdgeId)->Option<&Edge>{self.edges.get(&id)}
     pub fn lookup_node(&self,key:&NodeKey)->Option<NodeId>{self.interner.node_id(key)}
+    /// Reverse-lookup: given a node ID, return its key.
+    pub fn lookup_node_key(&self, id: NodeId) -> Option<&NodeKey> {
+        self.interner.lookup_node(id)
+    }
     pub fn lookup_edge(&self,key:&EdgeKey)->Option<EdgeId>{self.interner.edge_id(key)}
     pub fn edges_from(&self,id:NodeId)->Vec<&Edge>{
         self.out_edges.get(&id).map(|ids|ids.iter().filter_map(|e|self.edges.get(e)).collect()).unwrap_or_default()
@@ -227,19 +231,25 @@ impl GraphStore {
                 span:e.span.clone(),weight:e.weight}
         }).collect();
         let nlen=nodes.len();let elen=edges.len();
-        let(mut fc,mut sc,mut tc,mut ic,mut cc,mut cntc)=(0,0,0,0,0,0);
-        for n in&nodes{match n.kind{
+        let mut fc = 0; let mut sc = 0; let mut tc = 0; let mut ic = 0;
+        let mut cc = 0; let mut cntc = 0; let mut implc = 0; let mut dfc = 0;
+        for n in &nodes{match n.kind{
             NodeKind::Function|NodeKind::Method=>fc+=1,
             NodeKind::Struct=>sc+=1,NodeKind::Trait=>tc+=1,
             NodeKind::ImplBlock=>ic+=1,_=>{}}
         }
         for e in&edges{match e.kind{
-            EdgeKind::Calls=>cc+=1,EdgeKind::Contains=>cntc+=1,_=>{}}
+            EdgeKind::Calls=>cc+=1,
+            EdgeKind::Contains=>cntc+=1,
+            EdgeKind::Implements=>implc+=1,
+            EdgeKind::DataFlow=>dfc+=1,
+            _=>{}}
         }
         cg_ir::Snapshot{nodes,edges,file_count:self.imports.len(),
             stats:cg_ir::SnapshotStats{total_nodes:nlen,total_edges:elen,
                 function_count:fc,struct_count:sc,trait_count:tc,impl_count:ic,
-                calls_edge_count:cc,contains_edge_count:cntc}}
+                calls_edge_count:cc,contains_edge_count:cntc,
+                impl_edge_count:implc,data_flow_edge_count:dfc}}
     }
 
     pub fn snapshot(&self,view:&ViewSpec)->GraphDelta{

@@ -87,6 +87,8 @@ pub fn flatten(graphs: impl IntoIterator<Item = FileGraph>) -> Snapshot {
             impl_count,
             calls_edge_count,
             contains_edge_count,
+            impl_edge_count: 0,
+            data_flow_edge_count: 0,
         },
     }
 }

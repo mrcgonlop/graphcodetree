@@ -15,29 +15,25 @@ A text file is a linear byte sequence. A code graph is its **semantic skeleton**
 
 ## Architecture (target)
 
-The full pipeline has four layers. Extraction produces keyed data; the store interns keys into runtime IDs and applies deltas; enriching layers add semantic edges; the server broadcasts to clients via WebSocket.
+The full pipeline has four layers. Extraction produces keyed ops; the store interns keys into runtime IDs, versioned ingest/apply of deltas; enriching layers query the store and add semantic edges; the server broadcasts to clients via WebSocket.
 
 ```
-                 ┌──────────────┐
-file edit ──────▶│  cg-extract  │─── FileGraph (NodeKey-based, self-contained)
-                 └──────┬───────┘
-                        │
-                 ┌──────▼──────���┐
-                 │  cg-resolve  │─── cross-file name resolution
-                 └──────┬───────┘
-                        │
-                 ┌──────▼───────┐
-                 │  cg-enrich   │─── call graphs, impls, types (semantic, lazy)
-                 └──────┬───────┘
-                        │
-                 ┌──────▼───────┐
-                 │   cg-store   │─── intern keys → NodeId/EdgeId, versioned apply
-                 └──────┬───────┘
-                        │
-          ┌─────────────┼─────────────┐
-          ▼             ▼             ▼
-   cg-project      cg-server      cg-intent
-   (LLM maps)   (axum WS + web)  (EditIntent → WorkspaceEdit)
+                  +------------------+
+file edit ------>|  cg-extract      |--- KeyOp[] (NodeKey/EdgeKey-based, self-contained)
+                  +--------+---------+
+                           |
+                  +--------v---------+
+                  |  cg-store        |--- intern keys -> NodeId/EdgeId, versioned ingest/apply
+                  +--------+---------+
+                           |
+                  +--------v---------+
+                  |  cg-enrich       |--- query store, produce GraphDelta (Imports, Calls, Implements)
+                  +--------+---------+
+                           |
+             +-------------+-------------+
+             v             v             v
+      cg-project      cg-server      cg-intent
+      (LLM maps)   (axum WS + web)  (EditIntent -> WorkspaceEdit)
 ```
 
 ## Pipeline & Status
@@ -46,100 +42,34 @@ file edit ──────▶│  cg-extract  │─── FileGraph (NodeKey-
 |-------|-------|------|--------|-------------|
 | **Schema** | `cg-ir` | `crates/ir/` | ✅ Complete | NodeKind, EdgeKind, NodeKey, EdgeKey, Span, NodeAttrs, GraphDelta, GraphOp, EditIntent, IntentOutcome, ViewSpec — full serde round-trip, zero runtime deps |
 | **Structure** | `cg-extract` | `crates/extract/` | 🟡 Mostly done | Rust tree-walk extractor: two-pass def registration + call resolution, stable keyed identity, same-file scope resolution, import flattening, incremental `diff()` |
-| **Symbols** | `cg-resolve` | ❌ Not started | Empty | Cross-file crate paths, `mod foo;` joining, method receiver resolution |
-| **Semantic** | `cg-enrich` | ❌ Not started | Empty | Full call graph construction, impl/trait hierarchy, type inference hints |
-| **Store** | `cg-store` | 🔴 Stubs only | Stubs | `GraphStore` struct + method signatures exist, no interning, no `apply()`, no `snapshot()` |
+| **Semantic** | `cg-enrich` | `crates/enrich/` | 🟡 Mostly done | `Enricher` trait + `run_pipeline()`, three enrichers (`ImportResolver`, `CallGraphEnricher`, `ImplTraitEnricher`) |
+| **Store** | `cg-store` | `crates/store/` | ✅ Complete | Monotonic interning, `ingest()`, `apply()`, query methods, `to_snapshot()` + `snapshot(&ViewSpec)`, 6 store + 3 intern tests |
 | **Intents** | `cg-intent` | ❌ Not started | Empty | EditIntent validation rules, span→text compilation, legality table |
 | **Projection** | `cg-project` | 🔴 Stubs only | Stubs | `DetailLevel` enum + `render_map()` signature exist, no implementation |
-| **Server** | `cg-server` | ❌ Not started | Empty | axum WebSocket server, file watcher (notify), tool API for LLM agents |
-| **CLI** | `cg-cli` | ❌ Not started | Empty | `codegraph index`, `codegraph map`, `codegraph serve` commands |
-| **Web client** | `web/` | ❌ Not started | Empty | TypeScript normalized store, Cytoscape.js graph renderer, Monaco code pane |
-| **Queries** | `queries/` | 🟡 Partial | Only `rust.scm` | tree-sitter query files per language for capture-based extraction |
+| **Server** | `cg-server` | ❌ Not started | Empty | axum WebSocket server, file watcher (notify), delta broadcast |
+| **CLI** | `cg-cli` | `crates/cli/` | 🟡 Mostly done | clap-based command runner, extract-and-json-serialize pipeline, no store or enrichment wiring yet |
 
-## Getting Started
+### Key design choices
 
-### Prerequisites
+- **Extraction is stateless**: produces self-contained `KeyOp[]` arrays keyed by `NodeKey` (language, file path, qualified name, kind, disambiguator). The extractor never sees a `NodeId`.
+- **Store is the single source of truth**: it interns `NodeKey` -> `NodeId`, assigns `EdgeId`s monotonically, enforces version monotonicity on ingest/apply, and owns all node/edge storage. Query methods provide read access for enrichers and broadcast.
+- **Enrichment is additive**: enrichers are stateless `Enricher` implementations that query the store and return `GraphDelta`s of new edges. These are applied via `store.apply()` and broadcast.
+- **Keys are stable across body edits**: A function retains its `NodeKey` when its body changes -- only `NodeAttrs.signature`, `.doc`, and `.span` update. Identity churn only happens on structural delete+recreate.
 
-- Rust 2021 edition or later
-- A C compiler (for tree-sitter grammar compilation)
+### NodeKey design
 
-### Build & Test
-
-```bash
-# Build all crates
-cargo build
-
-# Run all tests
-cargo test
-
-# Run extraction tests with output
-cargo test -p cg-extract -- --nocapture
+```
+NodeKey::Symbol { lang, file, qualified_name, kind, disambiguator }
+   vs.
+NodeKey::Anchored { ancestor, ast_kind, ordinal }
 ```
 
-### Quick Example — Extract a Rust file
+| Variant | Used for | Identity stability |
+|---------|----------|-------------------|
+| `Symbol` | Named definitions (fn, struct, enum, trait) | Stable across renames, moves to other files -- same qualified name == same key |
+| `Anchored` | Call sites, anonymous constructs | Edits in other parts of the file |
 
-```rust
-use cg_extract::{RustExtractor, SourceFile, Extractor};
-
-let source = SourceFile {
-    path: "src/main.rs".into(),
-    lang: cg_ir::Lang::Rust,
-    text: r#"
-        pub fn greet(name: &str) -> String {
-            format!("Hello, {}!", name)
-        }
-    "#.to_string(),
-};
-
-let extractor = RustExtractor;
-let graph = extractor.extract(&source).expect("extract");
-
-println!("{} nodes, {} edges, {} imports",
-    graph.nodes.len(), graph.edges.len(), graph.imports.len());
-```
-
-### Incremental Extraction
-
-```rust
-use cg_extract::{extract_delta, SourceFile};
-use cg_ir::Lang;
-
-let file = SourceFile {
-    path: "src/lib.rs".into(), lang: Lang::Rust,
-    text: original_text.to_string(),
-};
-
-let (graph, ops) = extract_delta(&extractor, &file, None).unwrap();
-
-// After editing the file:
-let file = SourceFile { text: edited_text, ..file };
-let (new_graph, ops) = extract_delta(&extractor, &file, Some(&graph)).unwrap();
-// ops is now incremental: only the changed keys
-```
-
-
-## How Extraction Works
-
-### Two-Pass Walk (Rust)
-
-1. **Pass 1 — Registration** (`walk_items`): Walks the AST root, emitting a `NodeKey::Symbol` for every definition (function, struct, enum, trait, impl block, module, constant, type alias, macro). Registers the qualified name in `defs_qualified` and the simple name in `defs_simple`. Queues function/method bodies as `call_jobs`.
-
-2. **Pass 2 — Call resolution** (`extract_calls`): For each queued body, walks descendants looking for `call_expression` and `macro_invocation` nodes. Resolves each callee syntactically:
-   - `identifier` → unique same-file definition (`same_file`), imported name (`imported`), or `unresolved`
-   - `scoped_identifier` (`Thing::new`) → qualified lookup (`same_file`) or `path_unresolved`
-   - `field_expression` (`self.log()`, `t.bump()`) → self-method lookup (`self_method`) or `method_unresolved`
-   - Everything else → `dynamic`
-
-Call sites get `NodeKey::Anchored` keys, anchored to the nearest stable ancestor + ordinal, so edits elsewhere in the file don't renumber them.
-
-### Keyed Identity
-
-| Key type | Used for | Survives |
-|----------|----------|----------|
-| `NodeKey::Symbol { lang, file, qualified_name, kind, disambiguator }` | Named definitions | Body edits, span changes, attribute changes |
-| `NodeKey::Anchored { ancestor, ast_kind, ordinal }` | Call sites, anonymous constructs | Edits in other parts of the file |
-
-The `diff()` function compares two `FileGraph`s key-by-key and produces `KeyOp::UpsertNode` / `KeyOp::RemoveEdge` etc. — identity churn only happens when a construct is genuinely deleted or renamed.
+The `diff()` function compares two `FileGraph`s key-by-key and produces `KeyOp::UpsertNode` / `KeyOp::RemoveEdge` etc. -- identity churn only happens when a construct is genuinely deleted or renamed.
 
 ## The IR Vocabulary
 
@@ -149,7 +79,7 @@ The `diff()` function compares two `FileGraph`s key-by-key and produces `KeyOp::
 
 ### Edge Kinds
 
-`Contains` (hierarchy tree), `Defines` (type → member), `Imports`, `References`, `Calls`, `Inherits`, `Implements`
+`Contains` (hierarchy tree), `Defines` (type -> member), `Imports`, `References`, `Calls`, `Inherits`, `Implements`
 
 ### Attributes
 
@@ -158,12 +88,12 @@ Each node carries optional `signature`, `visibility` (Private/Crate/Public), `do
 ## Data Flow
 
 ```
-edit → tree-sitter reparse
-     → extract_delta(extractor, file, prev)
-     → Vec<KeyOp>
-     → cg-store intern keys → GraphDelta (NodeId/EdgeId based)
-     → broadcast to all clients
-     → UI re-renders / LLM receives snapshot delta
+edit -> tree-sitter reparse
+     -> extractor -> KeyOp[]
+     -> store.ingest() -> GraphDelta (broadcast)
+     -> enrichers query store, return GraphDeltas
+     -> store.apply() each delta -> broadcast each
+     -> UI re-renders / LLM receives snapshot delta
 ```
 
 ## Query File
@@ -185,31 +115,33 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 
 ## Roadmap
 
-### Phase 1 — Structure extraction (current)
+### Phase 1 -- Structure extraction (current)
 - [x] `cg-ir`: full canonical schema with serde round-trip
 - [x] `cg-extract`: Rust tree-walk extractor (two-pass, keyed, same-file resolution)
 - [x] Incremental `diff()` producing `KeyOp` streams
 - [x] `queries/rust.scm`: tree-sitter query file for Rust
-- [ ] **MVP demo**: one-shot static graph from a Rust codebase → JSON → HTML visualizer
+- [x] `cg-store`: `GraphStore` with interning, `ingest()`, `apply()`, `snapshot()`, query API
+- [x] `cg-enrich`: `Enricher` trait + `run_pipeline()`, import resolver, call graph, impl/trait enrichers
+- [ ] **MVP demo**: one-shot static graph from a Rust codebase -> JSON -> HTML visualizer
 
-### Phase 2 — Multi-file & cross-file
-- [ ] `cg-resolve`: `mod foo;` joining, `use` path resolution, crate graph
-- [ ] `cg-store`: NodeKey → NodeId interning, versioned `apply()`, `snapshot()`
+### Phase 2 -- Multi-file & cross-file (in progress)
 - [ ] Directory-walking CLI (`codegraph index`)
 - [ ] Extract Python, TypeScript, Go via tree-sitter queries
+- [ ] Crate-graph builder (external dependency discovery)
 
-### Phase 3 — Semantic enrichment
-- [ ] `cg-enrich`: full call graph (cross-file `Calls`), impl/trait wiring, type hints
+### Phase 3 -- Semantic enrichment (next)
+- [ ] Dogfood: test enrichment on real workspace
+- [ ] Type inference / method dispatch enricher
 - [ ] `cg-project`: `DetailLevel` renderer, PageRank-based token budgeting
-- [ ] `cg-intent`: EditIntent validation, span→text compilation, legality table
+- [ ] `cg-intent`: EditIntent validation, span-to-text compilation, legality table
 
-### Phase 4 — Server & real-time
+### Phase 4 -- Server & real-time
 - [ ] `cg-server`: axum WebSocket server, file watcher (notify), delta broadcast
 - [ ] `web/`: TypeScript normalized store, Cytoscape.js graph canvas, Monaco code pane
 - [ ] `codegraph serve`: CLI command to start the dev server
 - [ ] Live incremental re-extraction on file save
 
-### Phase 5 — LLM integration
+### Phase 5 -- LLM integration
 - [ ] Tool API: LLM agents can call `expand()`, submit `EditIntent`, receive `WorkspaceEdit`
 - [ ] Aider-style text map with inline `[n:ID]` references
 - [ ] Semantic zoom: collapse modules into summary edges within token budget
@@ -217,4 +149,3 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 ## License
 
 MIT
-

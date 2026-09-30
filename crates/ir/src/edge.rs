@@ -14,6 +14,7 @@ pub enum EdgeKind {
     Calls,
     Inherits,
     Implements,
+    DataFlow,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]

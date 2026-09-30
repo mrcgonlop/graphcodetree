@@ -12,15 +12,18 @@
 //! | R1   | `ImportResolver` | `Imports` edges + `Contains` for module hierarchy |
 //! | R2   | `CallGraphEnricher` | Cross-file `Calls` edges via import+qualified lookup |
 //! | R3   | `ImplTraitEnricher` | `Implements`/`Inherits` edges from impl blocks |
-//! | R4+  | Type resolver | Method dispatch, dataflow, generics |
+//! | R4   | `DataFlowEnricher` | `DataFlow` edges tracking value provenance between definitions |
+//! | R5+  | Type resolver | Method dispatch, dataflow, generics |
 
 mod import_resolver;
 mod call_graph;
 mod impl_trait;
+mod data_flow;
 
 pub use import_resolver::ImportResolver;
 pub use call_graph::CallGraphEnricher;
 pub use impl_trait::ImplTraitEnricher;
+pub use data_flow::DataFlowEnricher;
 
 use cg_ir::GraphDelta;
 use cg_store::GraphStore;

@@ -60,4 +60,6 @@ pub struct SnapshotStats {
     pub impl_count: usize,
     pub calls_edge_count: usize,
     pub contains_edge_count: usize,
+    pub impl_edge_count: usize,
+    pub data_flow_edge_count: usize,
 }

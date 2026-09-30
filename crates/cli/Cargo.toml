@@ -10,6 +10,8 @@ path = "src/main.rs"
 [dependencies]
 cg-ir             = { path = "../ir" }
 cg-extract        = { path = "../extract" }
+cg-store          = { path = "../store" }
+cg-enrich         = { path = "../enrich" }
 walkdir           = "2"
 serde_json        = { workspace = true }
 clap              = { workspace = true }

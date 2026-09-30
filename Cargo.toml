@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/*"]
+members = ["crates/ir", "crates/extract", "crates/store", "crates/enrich", "crates/cli"]
 
 [workspace.dependencies]
 # versions indicative — pin and commit the lockfile, especially tree-sitter grammars

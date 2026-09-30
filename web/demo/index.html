@@ -84,6 +84,17 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 
   let cy, snapshot;
 
+  /// Walk a NodeKey up its ancestor chain to find the nearest Symbol key.
+  /// Anchored (call-site) nodes have `ancestor` pointing to the enclosing
+  /// definition — we want that as the visual endpoint for cross-edges.
+  function resolveToSymbol(key) {
+    while (key.key !== 'symbol') {
+      if (key.key === 'anchored' && key.ancestor) key = key.ancestor;
+      else break;
+    }
+    return key;
+  }
+
   function nodeId(key) {
     if (key.key === 'symbol') return key.file + '::' + key.qualified_name;
     return key.file + '::anon#' + key.ordinal;
@@ -104,7 +115,9 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
       }});
     }
     for (const e of snapshot.edges) {
-      const srcId = nodeId(e.source), tgtId = nodeId(e.target);
+      const srcKey = resolveToSymbol(e.source);
+      const tgtKey = resolveToSymbol(e.target);
+      const srcId = nodeId(srcKey), tgtId = nodeId(tgtKey);
       if (!added.has(srcId) || !added.has(tgtId)) continue;
       edges.push({ data: {
         id: srcId + '→' + tgtId, source: srcId, target: tgtId,
@@ -113,6 +126,17 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
     }
     return { nodes, edges };
   }
+
+    const EDGE_COLORS = {
+      contains: { color: '#414868', width: 1.5, style: 'solid', arrow: false },
+      defines:  { color: '#565f89', width: 1, style: 'dotted', arrow: false },
+      calls:    { color: '#7aa2f7', width: 2, style: 'solid', arrow: true },
+      imports:  { color: '#73daca', width: 1.5, style: 'dashed', arrow: false },
+      inherits: { color: '#e0af68', width: 1.5, style: 'dotted', arrow: false },
+      implements: { color: '#f7768e', width: 2, style: 'dashed', arrow: true },
+      references: { color: '#bb9af7', width: 1, style: 'dashed', arrow: false },
+      data_flow:  { color: '#ff9e64', width: 2, style: 'solid', arrow: true },
+    };
 
   function render(snapshot) {
     const el = buildElements(snapshot);
@@ -124,11 +148,7 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
       container, elements: [...el.nodes, ...el.edges],
       style: [
         { selector: 'node', style: { 'background-color': 'data(color)', label: 'data(label)', 'font-size': '10px', color: '#a9b1d6', 'text-valign': 'bottom', 'text-halign': 'center', 'text-margin-y': 6, width: 28, height: 28, 'border-width': 2, 'border-color': '#2f3346', 'border-opacity': 0.8 } },
-        { selector: 'edge', style: { width: 1.5, 'line-color': '#2f3346', 'target-arrow-color': '#565f89', 'target-arrow-shape': 'triangle', 'arrow-scale': 0.7, 'curve-style': 'bezier' } },
-        { selector: 'edge[kind = "calls"]', style: { 'line-color': '#f7768e', 'target-arrow-color': '#f7768e', width: 1.2 } },
-        { selector: 'edge[kind = "contains"]', style: { 'line-color': '#3b4261', 'target-arrow-color': '#3b4261', 'line-style': 'dotted', width: 0.8 } },
-        { selector: 'edge[kind = "defines"]', style: { 'line-color': '#73daca', 'target-arrow-color': '#73daca', 'line-style': 'dashed', width: 0.8 } },
-        { selector: 'edge[kind = "imports"]', style: { 'line-color': '#2ac3de', 'target-arrow-color': '#2ac3de', 'line-style': 'dashed', width: 0.6 } },
+        { selector: 'edge', style: { 'line-color': '#2f3346', width: 1, 'target-arrow-shape': 'triangle', 'arrow-scale': 0.6, 'curve-style': 'bezier' } },
         { selector: ':selected', style: { 'border-width': 3, 'border-color': '#e0af68' } },
       ],
       layout: { name: 'cose', animate: true, gravity: 0.8, numIter: 1000, idealEdgeLength: 120, padding: 40 },
@@ -213,7 +233,7 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
     .then(data => {
       snapshot = data;
       const s = data.stats;
-      document.getElementById('stats').innerHTML = data.file_count + ' files · ' + s.total_nodes + ' defs · ' + s.total_edges + ' edges<br>' + s.function_count + ' fns · ' + s.struct_count + ' structs · ' + s.trait_count + ' traits · ' + s.calls_edge_count + ' calls';
+      document.getElementById('stats').innerHTML = data.file_count + ' files · ' + s.total_nodes + ' defs · ' + s.total_edges + ' edges<br>' + s.function_count + ' fns · ' + s.struct_count + ' structs · ' + s.trait_count + ' traits · ' + s.calls_edge_count + ' calls · ' + (s.impl_edge_count || 0) + ' implements · ' + (s.data_flow_edge_count || 0) + ' dataflows';
       render(data);
     })
     .catch(err => {

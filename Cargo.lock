@@ -75,8 +75,10 @@ dependencies = [
 name = "cg-cli"
 version = "0.1.0"
 dependencies = [
+ "cg-enrich",
  "cg-extract",
  "cg-ir",
+ "cg-store",
  "clap",
  "serde_json",
  "walkdir",
@@ -111,10 +113,6 @@ dependencies = [
  "serde_json",
  "thiserror",
 ]
-
-[[package]]
-name = "cg-project"
-version = "0.1.0"
 
 [[package]]
 name = "cg-store"

@@ -1,18 +1,19 @@
 //! CallGraphEnricher — R2 enricher.
 //!
-//! Walks CallSite nodes that were tagged `"imported"` or `"path_unresolved"`
-//! by the extractor and attempts to resolve them against the store's global
-//! definition index.
+//! Walks CallSite nodes tagged by the extractor and attempts to resolve
+//! them against the store's global definition index.
 //!
-//! Resolution strategy:
+//! Resolution strategy by tag:
 //!
-//! 1. **Imported calls**: The call site's `extra.path` hint contains the
-//!    import path (e.g. `"crate::foo::bar::baz"`). Strip the crate prefix
-//!    and do a qualified-name lookup.
-//! 2. **Path-unresolved calls**: The hint is a full path like
-//!    `"crate::foo::bar::new"`. Try qualified-name lookup directly.
-//! 3. **Unresolved simple names**: Try `lookup_qualified` with the callee
-//!    name alone.
+//! | Tag                | Strategy |
+//! |--------------------|----------|
+//! | `"imported"`       | `extra.hint` contains the import path (e.g. `"crate::foo::Bar"`). Strip the crate prefix and try qualified-name lookup. |
+//! | `"path_unresolved"`| `extra.hint` is a full path like `"crate::foo::bar::new"`. Try qualified-name lookup directly. |
+//! | `"unresolved"`     | Try `lookup_qualified` with the callee name alone. |
+//! | `"method_unresolved"` | Receiver type in `extra.hint`; try to find a method impl'd for that type anywhere in the store. |
+//! | `"self_method"`    | Resolved same-file by the extractor — already wired, skip. |
+//! | `"same_file"`      | Already wired by extractor — skip. |
+//! | `"dynamic"`        | Closures, macros — skip. |
 
 use cg_ir::{
     Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKind,
@@ -34,13 +35,27 @@ impl Enricher for CallGraphEnricher {
         for call_site in store.nodes_by_kind(NodeKind::CallSite) {
             let resolution = call_site.attrs.extra.get("resolution")
                 .and_then(|v| v.as_str()).unwrap_or("");
-            let hint = call_site.attrs.extra.get("path")
+            // The extractor writes "hint"; the enricher reads "hint".
+            let hint = call_site.attrs.extra.get("hint")
                 .and_then(|v| v.as_str()).unwrap_or("");
 
             let target = match resolution {
-                "imported" => resolve_imported(store, hint, call_site),
+                // Already wired by the extractor — skip.
+                "same_file" | "self_method" | "dynamic" => None,
+
+                // Imported call: hint is e.g. "crate::foo::Bar::baz".
+                "imported" => resolve_imported(store, hint),
+
+                // Scoped path that wasn't resolved: hint is e.g. "crate::foo::bar::new".
                 "path_unresolved" => resolve_path(store, hint),
+
+                // Simple name: try lookup by label.
                 "unresolved" => resolve_simple(store, &call_site.label),
+
+                // Method call on a receiver: hint is the receiver type name.
+                // Look for a method with this name in any impl block.
+                "method_unresolved" => resolve_method(store, &call_site.label, hint),
+
                 _ => None,
             };
 
@@ -69,13 +84,17 @@ impl Enricher for CallGraphEnricher {
 /// Resolve an `"imported"` call: hint is the import path like
 /// `"crate::foo::bar::Baz"`. The last segment is the callee name;
 /// the preceding segments are the import path.
-fn resolve_imported(store: &GraphStore, hint: &str, _site: &cg_ir::Node) -> Option<NodeId> {
+fn resolve_imported(store: &GraphStore, hint: &str) -> Option<NodeId> {
+    if hint.is_empty() {
+        return None;
+    }
     let qn = strip_crate_prefix(hint);
+    // First try the full qualified name.
     let results = store.lookup_qualified(&qn);
     if !results.is_empty() {
         return Some(results[0].0);
     }
-    // Try just the last path segment (the callee name)
+    // Then try just the last path segment (the callee name).
     if let Some(name) = qn.rsplit("::").next() {
         let results = store.lookup_qualified(name);
         if results.len() == 1 {
@@ -88,6 +107,9 @@ fn resolve_imported(store: &GraphStore, hint: &str, _site: &cg_ir::Node) -> Opti
 /// Resolve a `"path_unresolved"` call: hint is a full path like
 /// `"crate::foo::bar::new"`.
 fn resolve_path(store: &GraphStore, hint: &str) -> Option<NodeId> {
+    if hint.is_empty() {
+        return None;
+    }
     let qn = strip_crate_prefix(hint);
     let results = store.lookup_qualified(&qn);
     if !results.is_empty() {
@@ -103,6 +125,45 @@ fn resolve_simple(store: &GraphStore, callee: &str) -> Option<NodeId> {
     if results.len() == 1 {
         return Some(results[0].0);
     }
+    None
+}
+
+/// Resolve a `"method_unresolved"` call: `receiver.method_name()` where
+/// `method_name` is `call_site.label` and `hint` is a short receiver-type
+/// name (up to 32 chars).  Search all `ImplBlock` nodes in the store for
+/// a method with this name.
+fn resolve_method(store: &GraphStore, method_name: &str, hint: &str) -> Option<NodeId> {
+    if method_name.is_empty() {
+        return None;
+    }
+    // Strategy 1: search all impl blocks for a method matching the name.
+    // Uses `Contains` edges from the impl block to find its children.
+    for impl_node in store.nodes_by_kind(NodeKind::ImplBlock) {
+        for edge in store.edges_from(impl_node.id) {
+            if edge.kind != EdgeKind::Contains {
+                continue;
+            }
+            let child_id = edge.target;
+            if let Some(child) = store.node(child_id) {
+                if child.label == method_name
+                    && matches!(child.kind, NodeKind::Method | NodeKind::Function)
+                {
+                    return Some(child_id);
+                }
+            }
+        }
+    }
+
+    // Strategy 2: if hint contains a type name, try
+    // `store.lookup_qualified("{type}::{method}")`.
+    if !hint.is_empty() {
+        let candidate = format!("{}::{}", hint, method_name);
+        let results = store.lookup_qualified(&candidate);
+        if !results.is_empty() {
+            return Some(results[0].0);
+        }
+    }
+
     None
 }
 
