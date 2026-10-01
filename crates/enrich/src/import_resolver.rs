@@ -11,6 +11,8 @@
 //! module declarations and import records that can be mapped to nodes
 //! already in the store.
 
+use std::path::Path;
+
 use cg_ir::{
     Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKey, NodeKind,
 };
@@ -27,11 +29,15 @@ impl Enricher for ImportResolver {
     fn enrich(&self, store: &GraphStore) -> GraphDelta {
         let base = store.version();
         let mut ops = Vec::new();
+        // Start edge IDs safely past any existing edge count so we don't
+        // collide with IDs already assigned by store.to_snapshot().
+        let mut next_eid = store.edge_count() as u32 + 1;
+        let file_nodes = store.nodes_by_kind(NodeKind::File);
 
-        // Phase 1: resolve mod declarations
+        // ── Phase 1: resolve mod declarations ────────────────────────
         // Walk all File nodes, find their mod_decls, and create Contains
         // edges to the target module file node.
-        for file_node in store.nodes_by_kind(NodeKind::File) {
+        for file_node in &file_nodes {
             let file_key = store.interner().lookup_node(file_node.id);
             let file_path = match file_key {
                 Some(NodeKey::Symbol { file, .. }) => file,
@@ -41,17 +47,17 @@ impl Enricher for ImportResolver {
             let parent_dir = file_path.parent().unwrap_or(std::path::Path::new(""));
 
             for decl in decls {
-                // Try to find a sibling file matching the module name
-                let sibling_file = parent_dir.join(&decl.name).with_extension("rs");
-                let mod_path = parent_dir.join(format!("{}.rs", decl.name));
+                // Rust module resolution:
+                //   mod foo;  →  {parent}/foo.rs  OR  {parent}/foo/mod.rs
+                let candidate1 = parent_dir.join(&decl.name).with_extension("rs");
+                let candidate2 = parent_dir.join(&decl.name).join("mod.rs");
 
-                // Check each possibility
-                let target = find_module_node(store, &sibling_file)
-                    .or_else(|| find_module_node(store, &mod_path));
+                let target = find_module_node(store, &candidate1)
+                    .or_else(|| find_module_node(store, &candidate2));
 
                 if let Some(target_id) = target {
-                    let eid = EdgeId(store.edge_count() as u32 + 1);
-                    // Ensure the next ID doesn't collide; store.apply() inserts fresh
+                    let eid = EdgeId(next_eid);
+                    next_eid += 1;
                     ops.push(GraphOp::UpsertEdge(Edge {
                         id: eid,
                         kind: EdgeKind::Contains,
@@ -64,10 +70,10 @@ impl Enricher for ImportResolver {
             }
         }
 
-        // Phase 2: resolve import records to qualified-name lookups
+        // ── Phase 2: resolve import records ──────────────────────────
         // For each file's import records, try to find the target node
         // by reconstructing the qualified name from the import path.
-        for file_node in store.nodes_by_kind(NodeKind::File) {
+        for file_node in &file_nodes {
             let file_key = store.interner().lookup_node(file_node.id);
             let file_path = match file_key {
                 Some(NodeKey::Symbol { file, .. }) => file,
@@ -75,13 +81,35 @@ impl Enricher for ImportResolver {
             };
             let Some(imports) = store.imports_for(file_path) else { continue };
 
-            // Build the qualified name from the import path
-            // e.g. ["crate", "foo", "bar"] → "foo::bar" (strip "crate")
             for imp in imports {
                 let qn = import_path_to_qualified(&imp.path);
+                if qn.is_empty() {
+                    continue;
+                }
                 let targets = store.lookup_qualified(&qn);
+                if targets.is_empty() && qn.contains("::") {
+                    // Partial match: try the last segment as a simple name.
+                    if let Some(last) = qn.rsplit("::").next() {
+                        if last.len() > 1 {
+                            let fallback = store.lookup_qualified(last);
+                            if fallback.len() == 1 {
+                                let eid = EdgeId(next_eid);
+                                next_eid += 1;
+                                ops.push(GraphOp::UpsertEdge(Edge {
+                                    id: eid,
+                                    kind: EdgeKind::Imports,
+                                    source: file_node.id,
+                                    target: fallback[0].0,
+                                    span: Some(imp.span.clone()),
+                                    weight: 1,
+                                }));
+                            }
+                        }
+                    }
+                }
                 for (target_id, _) in &targets {
-                    let eid = EdgeId(store.edge_count() as u32 + 1);
+                    let eid = EdgeId(next_eid);
+                    next_eid += 1;
                     ops.push(GraphOp::UpsertEdge(Edge {
                         id: eid,
                         kind: EdgeKind::Imports,
@@ -112,21 +140,23 @@ fn import_path_to_qualified(path: &[String]) -> String {
         .join("::")
 }
 
-/// Find a File node whose key matches the given path.
-fn find_module_node(store: &GraphStore, path: &std::path::Path) -> Option<NodeId> {
+/// Find a node whose key matches the given path (trying Module, then File).
+fn find_module_node(store: &GraphStore, path: &Path) -> Option<NodeId> {
+    // Normalize path separators to what the store uses.
+    let normalized: std::path::PathBuf = path.components().collect();
+
     let key = NodeKey::Symbol {
         lang: cg_ir::Lang::Rust,
-        file: path.to_path_buf(),
+        file: normalized.clone(),
         qualified_name: String::new(),
         kind: NodeKind::Module,
         disambiguator: 0,
     };
     store.lookup_node(&key)
         .or_else(|| {
-            // Also try as a regular file
             let fk = NodeKey::Symbol {
                 lang: cg_ir::Lang::Rust,
-                file: path.to_path_buf(),
+                file: normalized,
                 qualified_name: String::new(),
                 kind: NodeKind::File,
                 disambiguator: 0,

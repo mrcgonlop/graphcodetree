@@ -17,6 +17,11 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 #filters label { font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; padding: 2px 8px; border-radius: 4px; background: #292e42; color: #a9b1d6; }
 #filters label:hover { background: #363b54; }
 #filters input[type="checkbox"] { accent-color: #7aa2f7; }
+#depth-selector { padding: 4px 18px 8px; border-bottom: 1px solid #2f3346; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+#depth-selector .depth-label { font-size: 10px; color: #565f89; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 4px; }
+#depth-selector .depth-btn { font-size: 11px; padding: 2px 10px; border: 1px solid #2f3346; border-radius: 4px; background: #292e42; color: #a9b1d6; cursor: pointer; transition: all 0.15s; }
+#depth-selector .depth-btn:hover { background: #363b54; }
+#depth-selector .depth-btn.active { background: #7aa2f7; color: #1a1b26; border-color: #7aa2f7; font-weight: 600; }
 #search-box { padding: 10px 18px; border-bottom: 1px solid #2f3346; }
 #search-box input { width: 100%; padding: 6px 10px; border: 1px solid #2f3346; border-radius: 4px; background: #1f2335; color: #c0caf5; font-size: 12px; outline: none; }
 #search-box input:focus { border-color: #7aa2f7; }
@@ -32,7 +37,11 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 #node-details .edge-list h4 { font-size: 11px; font-weight: 600; color: #565f89; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 #node-details .edge-list .edge-item { padding: 2px 0; color: #a9b1d6; }
 #graph-container { flex: 1; background: #0f0f1a; position: relative; }
-#graph-container .tooltip { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: #565f89; font-size: 11px; }
+#graph-container .tooltip { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: #565f89; font-size: 11px; pointer-events: none; }
+#focus-indicator { display: none; padding: 6px 18px; background: #1f2335; border-bottom: 1px solid #2f3346; font-size: 11px; color: #e0af68; align-items: center; gap: 6px; }
+#focus-indicator.visible { display: flex; }
+#focus-indicator .focus-dismiss { margin-left: auto; cursor: pointer; color: #565f89; font-size: 13px; padding: 0 4px; }
+#focus-indicator .focus-dismiss:hover { color: #f7768e; }
 .kind-function { background: #7aa2f7; }
 .kind-struct  { background: #9ece6a; }
 .kind-enum    { background: #bb9af7; }
@@ -58,15 +67,19 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
     <div id="stats">Loading…</div>
   </header>
   <div id="filters"></div>
+  <div id="depth-selector"></div>
   <div id="search-box">
     <input type="text" id="search" placeholder="Filter nodes by name…" />
+  </div>
+  <div id="focus-indicator">
+    <span>🔍 Focus: </span><span id="focus-label"></span>
+    <span class="focus-dismiss" title="Show all nodes">✕</span>
   </div>
   <div id="node-details">
     <div class="empty">Click a node to see details</div>
   </div>
 </div>
-<div id="graph-container">
-  <div class="tooltip">Scroll to zoom · Drag to pan · Click for details</div>
+<div id="graph-container"></div>
 
 <script>
 (function() {
@@ -82,7 +95,7 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
     'module','constant','static','type_alias','macro','field','file'
   ];
 
-  let cy, snapshot;
+  let cy, snapshot, focusedNodeId = null;
 
   /// Walk a NodeKey up its ancestor chain to find the nearest Symbol key.
   /// Anchored (call-site) nodes have `ancestor` pointing to the enclosing
@@ -100,6 +113,109 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
     return key.file + '::anon#' + key.ordinal;
   }
 
+  const EDGE_COLORS = {
+    contains: { color: '#414868', width: 1.5, style: 'solid', arrow: false },
+    defines:  { color: '#565f89', width: 1, style: 'dotted', arrow: false },
+    calls:    { color: '#7aa2f7', width: 2, style: 'solid', arrow: true },
+    imports:  { color: '#73daca', width: 1.5, style: 'dashed', arrow: false },
+    inherits: { color: '#e0af68', width: 1.5, style: 'dotted', arrow: false },
+    implements: { color: '#f7768e', width: 2, style: 'dashed', arrow: true },
+    references: { color: '#bb9af7', width: 1, style: 'dashed', arrow: false },
+    data_flow:  { color: '#ff9e64', width: 2, style: 'solid', arrow: true },
+  };
+
+  // ── Focus mode ──────────────────────────────────────────────────
+  function focusNode(id) {
+    if (!cy) return;
+    focusedNodeId = id;
+    const node = cy.getElementById(id);
+    if (!node || node.length === 0) return;
+    const focusDepth = node.data('depth') || 0;
+
+    // Collect the focused node + its immediate neighbours
+    const neighbourIds = new Set();
+    neighbourIds.add(id);
+    node.connectedEdges().forEach(e => {
+      neighbourIds.add(e.source().id());
+      neighbourIds.add(e.target().id());
+    });
+
+    const allNodes = cy.nodes();
+    const allEdges = cy.edges();
+
+    // Dim everything — use depth difference for proportional opacity
+    allNodes.forEach(n => {
+      const nDepth = n.data('depth') || 0;
+      const depthDiff = Math.abs(nDepth - focusDepth);
+      let opacity;
+      if (neighbourIds.has(n.id())) {
+        opacity = 1.0;
+      } else if (depthDiff <= 1) {
+        // Same depth or adjacent — keep partially visible
+        opacity = 0.2;
+      } else {
+        // Deep difference — nearly hidden
+        opacity = Math.max(0.01, 0.15 - (depthDiff - 1) * 0.1);
+      }
+      n.style({
+        opacity,
+        'border-opacity': opacity,
+      });
+    });
+    allEdges.forEach(e => {
+      const srcDepth = (e.source().data('depth') || 0);
+      const tgtDepth = (e.target().data('depth') || 0);
+      const visible = neighbourIds.has(e.source().id()) && neighbourIds.has(e.target().id());
+      let opacity;
+      if (visible) {
+        opacity = 1.0;
+      } else if (Math.abs(srcDepth - focusDepth) <= 1 || Math.abs(tgtDepth - focusDepth) <= 1) {
+        opacity = 0.1;
+      } else {
+        opacity = 0.08;
+      }
+      e.style({
+        opacity,
+        'width': visible ? 2 : (opacity > 0.1 ? 1.0 : 0.2),
+      });
+    });
+
+    // Highlight the focused node with a glow
+    node.style({
+      'border-width': 4,
+      'border-color': '#e0af68',
+      'border-opacity': 1,
+    });
+
+    // Show details
+    showDetails(node.data());
+
+    // Update focus indicator
+    const fi = document.getElementById('focus-indicator');
+    document.getElementById('focus-label').textContent = node.data('label') + ' (' + node.data('kind') + ') depth ' + focusDepth;
+    fi.classList.add('visible');
+  }
+
+  function unfocusAll() {
+    if (!cy) return;
+    focusedNodeId = null;
+    cy.nodes().forEach(n => {
+      n.style({
+        opacity: 1.0,
+        'border-opacity': 0.8,
+        'border-width': 2,
+        'border-color': '#2f3346',
+      });
+    });
+    cy.edges().forEach(e => {
+      e.style({ opacity: 1.0, width: EDGE_COLORS[e.data('kind')] ? EDGE_COLORS[e.data('kind')].width : 1 });
+    });
+    // Reset details panel
+    document.getElementById('node-details').innerHTML = '<div class="empty">Click a node to see details</div>';
+    // Hide focus indicator
+    document.getElementById('focus-indicator').classList.remove('visible');
+  }
+
   function buildElements(snapshot) {
     const nodes = [], edges = [], added = new Set();
     for (const n of snapshot.nodes) {
@@ -112,6 +228,8 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
         qualifiedName: n.key.qualified_name, file: n.file,
         signature: n.attrs.signature, doc: n.attrs.doc,
         visibility: n.attrs.visibility,
+        span: n.span,
+        depth: n.depth || 0,
       }});
     }
     for (const e of snapshot.edges) {
@@ -119,51 +237,67 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
       const tgtKey = resolveToSymbol(e.target);
       const srcId = nodeId(srcKey), tgtId = nodeId(tgtKey);
       if (!added.has(srcId) || !added.has(tgtId)) continue;
+      const ec = EDGE_COLORS[e.kind] || EDGE_COLORS['references'];
       edges.push({ data: {
         id: srcId + '→' + tgtId, source: srcId, target: tgtId,
         kind: e.kind, weight: e.weight,
+        color: ec.color, edgeWidth: ec.width,
+        arrow: ec.arrow,
       }});
     }
-    return { nodes, edges };
-  }
-
-    const EDGE_COLORS = {
-      contains: { color: '#414868', width: 1.5, style: 'solid', arrow: false },
-      defines:  { color: '#565f89', width: 1, style: 'dotted', arrow: false },
-      calls:    { color: '#7aa2f7', width: 2, style: 'solid', arrow: true },
-      imports:  { color: '#73daca', width: 1.5, style: 'dashed', arrow: false },
-      inherits: { color: '#e0af68', width: 1.5, style: 'dotted', arrow: false },
-      implements: { color: '#f7768e', width: 2, style: 'dashed', arrow: true },
-      references: { color: '#bb9af7', width: 1, style: 'dashed', arrow: false },
-      data_flow:  { color: '#ff9e64', width: 2, style: 'solid', arrow: true },
-    };
-
+    return { nodes, edges };}
+  
   function render(snapshot) {
     const el = buildElements(snapshot);
     const container = document.getElementById('graph-container');
     if (cy) cy.destroy();
-    container.innerHTML = '<div class="tooltip">Scroll to zoom · Drag to pan · Click for details</div>';
+    container.innerHTML = '<div class="tooltip">Scroll to zoom · Drag to pan · Click to focus · Double-click canvas to show all</div>';
 
     cy = cytoscape({
       container, elements: [...el.nodes, ...el.edges],
       style: [
         { selector: 'node', style: { 'background-color': 'data(color)', label: 'data(label)', 'font-size': '10px', color: '#a9b1d6', 'text-valign': 'bottom', 'text-halign': 'center', 'text-margin-y': 6, width: 28, height: 28, 'border-width': 2, 'border-color': '#2f3346', 'border-opacity': 0.8 } },
-        { selector: 'edge', style: { 'line-color': '#2f3346', width: 1, 'target-arrow-shape': 'triangle', 'arrow-scale': 0.6, 'curve-style': 'bezier' } },
+        { selector: 'edge', style: { 'line-color': 'data(color)', width: 'data(edgeWidth)', 'target-arrow-shape': function(ele) { return ele.data('arrow') ? 'triangle' : 'none'; }, 'arrow-scale': 0.6, 'curve-style': 'bezier' } },
         { selector: ':selected', style: { 'border-width': 3, 'border-color': '#e0af68' } },
       ],
       layout: { name: 'cose', animate: true, gravity: 0.8, numIter: 1000, idealEdgeLength: 120, padding: 40 },
       wheelSensitivity: 0.4,
     });
 
-    cy.on('tap', 'node', function(evt) { showDetails(evt.target.data()); });
-    cy.on('mouseover', 'node', function(evt) { evt.target.style('border-color', '#e0af68'); });
-    cy.on('mouseout', 'node', function(evt) { evt.target.style('border-color', '#2f3346'); });
+    // ── Focus mode: tap node → focus; same node again → unfocus ──
+    cy.on('tap', 'node', function(evt) {
+      const id = evt.target.id();
+      if (focusedNodeId === id) {
+        unfocusAll();
+      } else {
+        focusNode(id);
+      }
+    });
+
+    // ── Double-tap background → unfocus all ──
+    cy.on('dblclick', function(evt) {
+      if (evt.target === cy) unfocusAll();
+    });
+
+    // Hover effects (only when not focused, use border to indicate clickability)
+    cy.on('mouseover', 'node', function(evt) {
+      if (!focusedNodeId) evt.target.style('border-color', '#e0af68');
+    });
+    cy.on('mouseout', 'node', function(evt) {
+      if (!focusedNodeId) evt.target.style('border-color', '#2f3346');
+    });
+
+    // Focus indicator dismiss button
+    document.querySelector('.focus-dismiss').addEventListener('click', unfocusAll);
 
     // Search
     document.getElementById('search').addEventListener('input', function() {
       const q = this.value.toLowerCase();
       cy.nodes().forEach(n => {
-        n.style('display', q === '' || n.data('label').toLowerCase().includes(q) || n.data('qualifiedName').toLowerCase().includes(q) ? 'element' : 'none');
+        const matchSearch = q === '' || n.data('label').toLowerCase().includes(q) || n.data('qualifiedName').toLowerCase().includes(q);
+        n.data('search-hidden', !matchSearch);
+        const depthVisible = n.data('depth-visible') !== false;
+        n.style('display', matchSearch && depthVisible ? 'element' : 'none');
       });
     });
 
@@ -173,7 +307,14 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
       document.querySelectorAll('#filters input[type="checkbox"]').forEach(cb => { checked[cb.value] = cb.checked; });
       const anyUnchecked = Object.values(checked).some(v => !v);
       cy.nodes().forEach(n => {
-        n.style('display', anyUnchecked ? (checked[n.data('kind')] !== false ? 'element' : 'none') : 'element');
+        const kindVisible = anyUnchecked ? (checked[n.data('kind')] !== false ? 'element' : 'none') : 'element';
+        if (kindVisible === 'none') {
+          n.style('display', 'none');
+        } else {
+          const searchHidden = n.data('search-hidden');
+          const depthVisible = n.data('depth-visible') !== false;
+          n.style('display', !searchHidden && depthVisible ? 'element' : 'none');
+        }
       });
     }
 
@@ -194,6 +335,52 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
       label.appendChild(span);
       filterDiv.appendChild(label);
     }
+    // ── Depth filter — build selector buttons ──
+    let maxDepthSeen = 0;
+    for (const n of snapshot.nodes) {
+      const d = n.depth || 0;
+      if (d > maxDepthSeen) maxDepthSeen = d;
+    }
+    let selectedMaxDepth = null; // null = "All"
+    const depthSelector = document.getElementById('depth-selector');
+    depthSelector.innerHTML = '';
+    const depthLabel = document.createElement('span');
+    depthLabel.className = 'depth-label';
+    depthLabel.textContent = 'depth ≤';
+    depthSelector.appendChild(depthLabel);
+    function applyDepthFilter() {
+      const anyDepthActive = selectedMaxDepth !== null;
+      cy.nodes().forEach(n => {
+        const nd = n.data('depth');
+        const passDepth = !anyDepthActive || nd <= selectedMaxDepth;
+        n.data('depth-visible', passDepth);
+        const searchHidden = n.data('search-hidden');
+        n.style('display', passDepth && !searchHidden ? 'element' : 'none');
+      });
+    }
+    // Add "All" button
+    const allBtn = document.createElement('span');
+    allBtn.className = 'depth-btn active';
+    allBtn.textContent = 'All';
+    allBtn.addEventListener('click', function() {
+      selectedMaxDepth = null;
+      depthSelector.querySelectorAll('.depth-btn').forEach(b => b.classList.remove('active'));
+      this.classList.add('active');
+      applyDepthFilter();
+    });
+    depthSelector.appendChild(allBtn);
+    for (let d = 0; d <= maxDepthSeen; d++) {
+      const btn = document.createElement('span');
+      btn.className = 'depth-btn';
+      btn.textContent = '' + d;
+      btn.addEventListener('click', function() {
+        selectedMaxDepth = parseInt(this.textContent);
+        depthSelector.querySelectorAll('.depth-btn').forEach(b => b.classList.remove('active'));
+        this.classList.add('active');
+        applyDepthFilter();
+      });
+      depthSelector.appendChild(btn);
+    }
   }
 
 
@@ -203,7 +390,29 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
     let html = '<span class="node-kind" style="background:' + (KIND_COLORS[data.kind] || '#565f89') + '">' + data.kind + '</span>';
     html += '<div class="node-label">' + esc(data.label) + '</div>';
     if (data.signature) html += '<div class="node-signature">' + esc(data.signature) + '</div>';
-    html += '<div class="node-file"> ' + esc(data.file) + '</div>';
+
+    // File address with line number
+    let filePath = data.file || '';
+    filePath = filePath.replace(/^\.\\/, '').replace(/^\.\//, '');
+    let location = filePath;
+    if (data.span && data.span.start) {
+      const line = data.span.start.row + 1; // 1-based
+      const col = data.span.start.col;
+      location += ':' + line + ':' + col;
+      if (data.span.start_byte !== undefined) {
+        location += '  [' + data.span.start_byte + '–' + data.span.end_byte + ']';
+      }
+    }
+    html += '<div class="node-file"> 📄 ' + esc(location) + '</div>';
+
+    // Depth indicator
+    const depth$ = data.depth || 0;
+    if (depth$ > 0) {
+      html += '<div class="node-attrs">depth: ' + depth$ + ' <span style="color:#565f89">' + '▸'.repeat(depth$) + '</span></div>';
+    } else {
+      html += '<div class="node-attrs">depth: 0 (top-level)</div>';
+    }
+
     if (data.visibility && data.visibility !== 'private')
       html += '<div class="node-attrs">visibility: ' + data.visibility + '</div>';
     if (data.doc) html += '<div class="node-doc"> ' + esc(data.doc) + '</div>';
@@ -217,13 +426,30 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
           connected.forEach(e => {
             const other = e.source().id() === data.id ? e.target() : e.source();
             const dir = e.source().id() === data.id ? '→' : '←';
-            html += '<div style="padding:2px 0;color:#a9b1d6;font-size:11px"><span style="color:#bb9af7">' + e.data('kind') + '</span> ' + dir + ' ' + esc(other.data('label')) + '</div>';
+            const edgeColor = EDGE_COLORS[e.data('kind')] ? EDGE_COLORS[e.data('kind')].color : '#bb9af7';
+            html += '<div class="clickable-edge" data-id="' + esc(other.id()) + '" style="padding:3px 0;color:#a9b1d6;font-size:11px;cursor:pointer;border-radius:3px;transition:background 0.15s" title="Click to focus">';
+            html += '<span style="color:' + edgeColor + ';font-weight:600">' + esc(e.data('kind')) + '</span> ' + dir + ' <span style="color:#7aa2f7">' + esc(other.data('label')) + '</span>';
+            html += '</div>';
           });
           html += '</div>';
         }
       }
     }
     el.innerHTML = html;
+
+    // Wire up clickable edge elements
+    el.querySelectorAll('.clickable-edge').forEach(el => {
+      el.addEventListener('click', function() {
+        const targetId = this.dataset.id;
+        if (targetId) focusNode(targetId);
+      });
+      el.addEventListener('mouseenter', function() {
+        this.style.background = '#292e42';
+      });
+      el.addEventListener('mouseleave', function() {
+        this.style.background = 'transparent';
+      });
+    });
   }
 
   function esc(s) { if (!s) return ''; return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -233,7 +459,18 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
     .then(data => {
       snapshot = data;
       const s = data.stats;
-      document.getElementById('stats').innerHTML = data.file_count + ' files · ' + s.total_nodes + ' defs · ' + s.total_edges + ' edges<br>' + s.function_count + ' fns · ' + s.struct_count + ' structs · ' + s.trait_count + ' traits · ' + s.calls_edge_count + ' calls · ' + (s.impl_edge_count || 0) + ' implements · ' + (s.data_flow_edge_count || 0) + ' dataflows';
+      // Compute depth stats from nodes
+      let maxDepth = 0, depthHisto = {};
+      for (const n of data.nodes) {
+        const d = n.depth || 0;
+        if (d > maxDepth) maxDepth = d;
+        depthHisto[d] = (depthHisto[d] || 0) + 1;
+      }
+      let depthStr = 'depth: 0…' + maxDepth;
+      if (maxDepth > 0) {
+        depthStr += ' (' + Object.entries(depthHisto).map(([k, v]) => k + ':' + v).join(' · ') + ')';
+      }
+      document.getElementById('stats').innerHTML = data.file_count + ' files · ' + s.total_nodes + ' defs · ' + s.total_edges + ' edges<br>' + s.function_count + ' fns · ' + s.struct_count + ' structs · ' + s.trait_count + ' traits · ' + s.calls_edge_count + ' calls · ' + (s.impl_edge_count || 0) + ' implements · ' + (s.data_flow_edge_count || 0) + ' dataflows<br><span style="color:#565f89">' + depthStr + '</span>';
       render(data);
     })
     .catch(err => {

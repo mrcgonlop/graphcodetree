@@ -218,7 +218,8 @@ impl GraphStore {
                     qualified_name:n.label.clone(),kind:n.kind,disambiguator:0});
             cg_ir::GraphNode{key,kind:n.kind,label:n.label.clone(),
                 ast_kind:n.ast_kind.clone(),span:n.span.clone(),
-                attrs:n.attrs.clone(),file}
+                attrs:n.attrs.clone(),file,
+                depth:n.attrs.extra.get("depth").and_then(|v|v.as_u64()).unwrap_or(0)as u32}
         }).collect();
         let edges:Vec<_>=self.edges.values().map(|e|{
             let sk=self.interner.lookup_node(e.source).cloned().unwrap_or(

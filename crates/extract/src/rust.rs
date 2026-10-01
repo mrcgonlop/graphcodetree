@@ -81,7 +81,7 @@ impl Extractor for RustExtractor {
             defines_jobs: Vec::new(),
         };
 
-        walk_items(&mut ctx, tree.root_node(), &mut Vec::new(), &file_key);
+        walk_items(&mut ctx, tree.root_node(), &mut Vec::new(), &file_key, 0);
 
         // Pass 2: everything is registered now; forward references resolve.
         for (body, ancestor, scope) in std::mem::take(&mut ctx.call_jobs) {
@@ -123,6 +123,7 @@ fn walk_items<'a>(
     container: Node<'a>,
     scope: &mut Vec<String>,
     parent: &NodeKey,
+    depth: u32,
 ) -> Vec<NodeKey> {
     let mut emitted = Vec::new();
     let mut pending_docs: Vec<String> = Vec::new();
@@ -147,12 +148,12 @@ fn walk_items<'a>(
             "mod_item" => {
                 let Some(name_n) = child.child_by_field_name("name") else { continue };
                 let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Module, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, NodeKind::Module, &name, doc, depth);
                 emitted.push(key.clone());
                 match child.child_by_field_name("body") {
                     Some(body) => {
                         scope.push(name);
-                        walk_items(ctx, body, scope, &key);
+                        walk_items(ctx, body, scope, &key, depth + 1);
                         scope.pop();
                     }
                     None => {
@@ -176,7 +177,7 @@ fn walk_items<'a>(
                 } else {
                     NodeKind::Function
                 };
-                let key = emit_def(ctx, parent, scope, child, kind, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, kind, &name, doc, depth);
                 emitted.push(key.clone());
                 if let Some(body) = child.child_by_field_name("body") {
                     ctx.call_jobs.push((body, key, scope.clone()));
@@ -185,7 +186,7 @@ fn walk_items<'a>(
             "struct_item" | "union_item" => {
                 let Some(name_n) = child.child_by_field_name("name") else { continue };
                 let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Struct, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, NodeKind::Struct, &name, doc, depth);
                 emitted.push(key.clone());
                 if let Some(body) = child.child_by_field_name("body") {
                     let mut fcur = body.walk();
@@ -197,7 +198,7 @@ fn walk_items<'a>(
                         let fname = txt(&fname_n, ctx.src).to_string();
                         let fdoc = prev_doc(f, ctx.src);
                         scope.push(name.clone());
-                        emit_def(ctx, &key, scope, f, NodeKind::Field, &fname, fdoc);
+                        emit_def(ctx, &key, scope, f, NodeKind::Field, &fname, fdoc, depth + 1);
                         scope.pop();
                     }
                 }
@@ -205,7 +206,7 @@ fn walk_items<'a>(
             "enum_item" => {
                 let Some(name_n) = child.child_by_field_name("name") else { continue };
                 let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Enum, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, NodeKind::Enum, &name, doc, depth);
                 emitted.push(key.clone());
                 if let Some(body) = child.child_by_field_name("body") {
                     let mut vcur = body.walk();
@@ -217,7 +218,7 @@ fn walk_items<'a>(
                         let vname = txt(&vname_n, ctx.src).to_string();
                         let vdoc = prev_doc(v, ctx.src);
                         scope.push(name.clone());
-                        emit_def(ctx, &key, scope, v, NodeKind::EnumVariant, &vname, vdoc);
+                        emit_def(ctx, &key, scope, v, NodeKind::EnumVariant, &vname, vdoc, depth + 1);
                         scope.pop();
                     }
                 }
@@ -225,11 +226,11 @@ fn walk_items<'a>(
             "trait_item" => {
                 let Some(name_n) = child.child_by_field_name("name") else { continue };
                 let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Trait, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, NodeKind::Trait, &name, doc, depth);
                 emitted.push(key.clone());
                 if let Some(body) = child.child_by_field_name("body") {
                     scope.push(name);
-                    walk_items(ctx, body, scope, &key);
+                    walk_items(ctx, body, scope, &key, depth + 1);
                     scope.pop();
                 }
             }
@@ -243,14 +244,14 @@ fn walk_items<'a>(
                     Some(t) => format!("{t} for {ty}"),
                     None => format!("impl {ty}"),
                 };
-                let key = emit_def(ctx, parent, scope, child, NodeKind::ImplBlock, &label, doc);
+                let key = emit_def(ctx, parent, scope, child, NodeKind::ImplBlock, &label, doc, depth);
                 emitted.push(key.clone());
                 if let (Some(t), Some(n)) = (&trait_name, ctx.graph.nodes.get_mut(&key)) {
                     n.attrs.extra.insert("impl_trait".into(), t.clone().into());
                 }
                 if let Some(body) = child.child_by_field_name("body") {
                     scope.push(ty.clone());
-                    let members = walk_items(ctx, body, scope, &key);
+                    let members = walk_items(ctx, body, scope, &key, depth + 1);
                     scope.pop();
                     ctx.defines_jobs.push((ty, members));
                 }
@@ -282,7 +283,7 @@ fn walk_items<'a>(
                 } else {
                     NodeKind::Static
                 };
-                let key = emit_def(ctx, parent, scope, child, kind, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, kind, &name, doc, depth);
                 emitted.push(key.clone());
                 if let Some(value) = child.child_by_field_name("value") {
                     ctx.call_jobs.push((value, key, scope.clone()));
@@ -291,13 +292,13 @@ fn walk_items<'a>(
             "type_item" | "associated_type" => {
                 let Some(name_n) = child.child_by_field_name("name") else { continue };
                 let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::TypeAlias, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, NodeKind::TypeAlias, &name, doc, depth);
                 emitted.push(key);
             }
             "macro_definition" => {
                 let Some(name_n) = child.child_by_field_name("name") else { continue };
                 let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Macro, &name, doc);
+                let key = emit_def(ctx, parent, scope, child, NodeKind::Macro, &name, doc, depth);
                 emitted.push(key);
             }
             _ => {} // transparent at item level: loose statements, extern crate, ERROR nodes
@@ -315,6 +316,7 @@ fn emit_def(
     kind: NodeKind,
     name: &str,
     doc: Option<String>,
+    depth: u32,
 ) -> NodeKey {
     let qualified = if scope.is_empty() {
         name.to_string()
@@ -348,7 +350,11 @@ fn emit_def(
             signature: signature_of(node, ctx.src),
             visibility: visibility_of(node, ctx.src),
             doc,
-            extra: BTreeMap::new(),
+            extra: {
+            let mut m = BTreeMap::new();
+            m.insert("depth".into(), serde_json::json!(depth));
+            m
+        },
         },
     };
     ctx.defs_qualified.insert(qualified, key.clone());

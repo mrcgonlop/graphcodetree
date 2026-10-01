@@ -132,7 +132,7 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 
 ## Roadmap
 
-### Phase 1 -- Structure extraction (current)
+### Phase 1 -- Structure extraction ✓
 - [x] `cg-ir`: full canonical schema with serde round-trip
 - [x] `cg-extract`: Rust tree-walk extractor (two-pass, keyed, same-file resolution)
 - [x] Incremental `diff()` producing `KeyOp` streams
@@ -140,12 +140,17 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 - [x] `cg-store`: `GraphStore` with interning, `ingest()`, `apply()`, `snapshot()`, query API
 - [x] `cg-enrich`: `Enricher` trait + `run_pipeline()`, import resolver, call graph, impl/trait enrichers, data flow enricher
 - [x] Intra-function data flow tracking: `flows_from` on call sites, `DataFlow` edges
-- [ ] **MVP demo**: one-shot static graph from a Rust codebase -> JSON -> HTML visualizer
+- [x] **MVP demo**: one-shot static graph from a Rust codebase ➔ JSON ➔ HTML visualizer
 
-### Phase 2 -- Multi-file & cross-file (in progress)
-- [ ] Directory-walking CLI (`codegraph index`)
+### Phase 2 — Multi-file & cross-file ✓
+- [x] Directory-walking CLI (`codegraph snapshot` / `codegraph enrich`)
+- [x] Full pipeline: extract → ingest → enrich → snapshot with `codegraph enrich`
+- [x] Cross-file module resolution (`mod foo;` → `foo.rs` / `foo/mod.rs`)
+- [x] Cross-file import resolution (qualified-name lookup across files)
+- [x] Cross-file call graph enrichment (resolves `imported`, `path_unresolved`, `method_unresolved` call sites)
+- [x] **Depth / nesting level**: each definition node carries a `depth: u32` field (top-level = 0, nested inside modules/impls = 1, fields/variants inside structs/enums = 2, etc.), used for proportional dimming during focus mode in the visualizer
 - [ ] Extract Python, TypeScript, Go via tree-sitter queries
-- [ ] Crate-graph builder (external dependency discovery)
+- [ ] Crate-graph builder (external dependency discovery from `Cargo.toml`)
 
 ### Phase 3 -- Semantic enrichment (next)
 - [ ] Dogfood: test enrichment on real workspace
@@ -163,6 +168,29 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 - [ ] Tool API: LLM agents can call `expand()`, submit `EditIntent`, receive `WorkspaceEdit`
 - [ ] Aider-style text map with inline `[n:ID]` references
 - [ ] Semantic zoom: collapse modules into summary edges within token budget
+
+## Next Session Goals
+
+### 1. Crate-graph & TOML discovery
+- [ ] Parse `Cargo.toml` files for external dependency names → map to `crate::` import prefixes
+- [ ] Build crate-level nodes and edges showing inter-crate dependency
+- [ ] Resolve `use crate_name::...` imports against real crate types (fallback: stub crate nodes)
+
+### 2. Deeper cross-file resolution
+- [ ] Make `CallGraphEnricher` re-check cross-file calls after import resolution adds new edges
+- [ ] Resolve `super::` and `crate::`-relative paths by walking directory hierarchy
+- [ ] Handle glob re-exports (`pub use foo::*;`)
+
+### 4. Visualizer polish
+- [ ] Collapsible edge legend with color swatches and checkboxes to toggle edge kinds
+- [ ] "Show only connected" toggle that hides isolated nodes
+- [ ] Depth slider: filter nodes by max depth to see only shallow vs. deep structure
+- [ ] PNG export button for the graph canvas
+
+### 5. Export & stats
+- [ ] Per-kind edge counts in the stats header (how many Calls, Imports, etc.)
+- [ ] Node/edge count changes after filtering/searching
+- [ ] JSON schema documentation page
 
 ## License
 

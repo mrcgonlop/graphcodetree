@@ -25,6 +25,10 @@ pub fn flatten(graphs: impl IntoIterator<Item = FileGraph>) -> Snapshot {
         file_count += 1;
         for (key, spec) in fg.nodes {
             if spec.is_definition {
+                // Extract depth from attrs.extra (set during extraction).
+                let depth = spec.attrs.extra.get("depth")
+                    .and_then(|v| v.as_u64())
+                    .unwrap_or(0) as u32;
                 node_map.entry(key.clone()).or_insert(GraphNode {
                     key,
                     kind: spec.kind,
@@ -33,6 +37,7 @@ pub fn flatten(graphs: impl IntoIterator<Item = FileGraph>) -> Snapshot {
                     span: spec.span,
                     attrs: spec.attrs,
                     file: fg.file.clone(),
+                    depth,
                 });
             }
         }

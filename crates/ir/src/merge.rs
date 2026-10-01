@@ -24,6 +24,10 @@ pub struct GraphNode {
     pub attrs: NodeAttrs,
     /// Short file path for display (e.g. `src/main.rs`).
     pub file: PathBuf,
+    /// Nesting depth in the containment tree.
+    /// 0 = top-level (file-level), 1 = inside a module/impl, etc.
+    #[serde(default)]
+    pub depth: u32,
 }
 
 /// An edge in the flattened snapshot.
