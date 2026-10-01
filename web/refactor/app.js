@@ -62,141 +62,107 @@
 
   // ────────────────────────── Element builders ───────────────────────────
 
-  /// Flat graph: one node per symbol, edges between them.
+  /// Hierarchical graph: folders -> files -> symbols as compound ancestors.
   function buildElements(snapshot) {
     const nodes = [], edges = [], added = new Set();
-    for (const n of snapshot.nodes) {
-      if (n.key.key !== 'symbol') continue;
-      const id = nodeId(n.key);
-      if (added.has(id)) continue;
-      added.add(id);
-      const qualifiedName = n.key.qualifiedName || n.key.name || id;
-      nodes.push({
-        data: {
-          id: id,
-          label: shortLabel(n.key),
-          qualifiedName: qualifiedName,
-          kind: n.kind,
-          color: KIND_COLORS[n.kind] || '#bb9af7',
-          file: n.file || 'unknown',
-          depth: n.depth || 0,
-          doc: n.doc || null,
-        },
-      });
-    }
-
-    const edgeAdded = new Set();
-    for (const e of snapshot.edges) {
-      const srcKey = resolveToSymbol(e.source);
-      const tgtKey = resolveToSymbol(e.target);
-      const srcId = nodeId(srcKey), tgtId = nodeId(tgtKey);
-      if (!added.has(srcId) || !added.has(tgtId)) continue;
-      const eid = srcId + '->' + tgtId;
-      if (edgeAdded.has(eid)) continue;
-      edgeAdded.add(eid);
-      const ec = EDGE_COLORS[e.kind] || EDGE_COLORS['references'];
-      edges.push({
-        data: {
-          id: eid, source: srcId, target: tgtId,
-          kind: e.kind, weight: e.weight || 1,
-          color: ec.color,
-          edgeWidth: Math.min(5, 1 + (e.weight || 1) * 0.3),
-          arrow: true,
-        },
-      });
-    }
-    return { nodes, edges };
-  }
-
-  /// Compound graph (group mode): file nodes as compound parents containing symbol nodes.
-  /// The cose layout naturally repels parent containers apart, preventing overlap.
-  function buildCompoundElements(snapshot) {
-    const nodes = [], edges = [], added = new Set();
-    const fileInfo = new Map(); // file path -> { fid, count }
-
-    // Pass 1: collect unique files and count symbols per file
+    const fileSymbols = new Map(); // filePath -> [{ id, key, kind, depth, doc }]
     for (const n of snapshot.nodes) {
       if (n.key.key !== 'symbol') continue;
       const id = nodeId(n.key);
       if (added.has(id)) continue;
       added.add(id);
       const file = n.file || 'unknown';
-      if (!fileInfo.has(file)) fileInfo.set(file, { fid: 'fgroup:' + file, count: 0 });
-      fileInfo.get(file).count++;
+      if (!fileSymbols.has(file)) fileSymbols.set(file, []);
+      fileSymbols.get(file).push({ id: id, key: n.key, kind: n.kind, depth: n.depth || 0, doc: n.doc || null });
     }
-
-    // Build parent (file) nodes
-    const parentAdded = new Set();
-    for (const [file, info] of fileInfo) {
-      parentAdded.add(info.fid);
+    // ---- Helpers ----
+    function folderPart(fp) { var norm = fp.replace(/\\/g, '/'), i = norm.lastIndexOf('/'); return i >= 0 ? norm.substring(0, i) : ''; }
+    function fileName(fp) { return fp.replace(/^.*[/\\]/, ''); }
+    // ---- Build folder tree from file paths ----
+    const folderMap = new Map();
+    folderMap.set('', { parent: null, children: [], files: [] }); // root folder
+    for (const _fp of fileSymbols.keys()) {
+      var parts = _fp.replace(/\\/g, '/').split('/'), acc = '';
+      for (var i = 0; i < parts.length - 1; i++) {
+        var parent = acc;
+        acc = acc ? acc + '/' + parts[i] : parts[i];
+        if (!folderMap.has(acc)) {
+          folderMap.set(acc, { parent: parent, children: [], files: [] });
+          if (parent !== null) folderMap.get(parent).children.push(acc);
+        }
+      }
+      folderMap.get(acc || '').files.push(_fp);
+    }
+    // ---- Create folder compound nodes ----
+    const folderIds = new Set();
+    function emitFolder(path) {
+      if (folderIds.has(path)) return;
+      folderIds.add(path);
+      var info = folderMap.get(path);
+      if (!info) return;
+      var fid = 'folder:' + (path || '__root__');
+      var pfid = null;
+      if (info.parent !== null) {
+        emitFolder(info.parent);
+        pfid = 'folder:' + (info.parent || '__root__');
+      }
       nodes.push({
         data: {
-          id: info.fid,
-          label: file.replace(/^.*[\\/]/, ''),
-          kind: 'file',
-          color: '#292e42',
-          file: file,
-          depth: 0,
-          qualifiedName: file,
-          _filePath: file,
-          _nodeCount: info.count,
-          _isFileGroup: true,
+          id: fid, parent: pfid, label: path ? path.replace(/^.*[/\\]/, '') : 'root',
+          kind: 'folder', color: '#1a1b2e', depth: 0, file: path,
+          _filePath: path, _nodeCount: info.files.length + info.children.length,
+          _isContainer: true, _isFolder: true, _collapsible: true,
         },
       });
     }
-
-    // Build child (symbol) nodes, referencing parent
-    const built = new Set(); // track which IDs have been added as children
-    for (const n of snapshot.nodes) {
-      if (n.key.key !== 'symbol') continue;
-      const id = nodeId(n.key);
-      if (!added.has(id) || built.has(id)) continue;
-      built.add(id);
-      const file = n.file || 'unknown';
-      const info = fileInfo.get(file);
-      if (!info) continue;
-      const qualifiedName = n.key.qualifiedName || n.key.name || id;
+    for (const _p of folderMap.keys()) emitFolder(_p);
+    // ---- Create file compound nodes with symbol children ----
+    const fileNodeIds = new Set();
+    for (const [_fp2, symbols] of fileSymbols) {
+      var fid = 'file:' + _fp2;
+      fileNodeIds.add(fid);
+      var fpath = folderPart(_fp2);
+      var pfid2 = 'folder:' + (fpath || '__root__');
       nodes.push({
         data: {
-          id: id,
-          parent: info.fid, // compound parent
-          label: shortLabel(n.key),
-          qualifiedName: qualifiedName,
-          kind: n.kind,
-          color: KIND_COLORS[n.kind] || '#bb9af7',
-          file: file,
-          depth: n.depth || 0,
-          doc: n.doc || null,
+          id: fid, parent: pfid2, label: fileName(_fp2),
+          kind: 'file', color: '#292e42', file: _fp2, depth: 0,
+          qualifiedName: _fp2, _filePath: _fp2, _nodeCount: symbols.length,
+          _isContainer: true, _isFileContainer: true, _collapsible: true,
         },
       });
+      for (const s of symbols) {
+        var qn = s.key.qualifiedName || s.key.name || s.id;
+        nodes.push({
+          data: {
+            id: s.id, parent: fid, label: shortLabel(s.key),
+            qualifiedName: qn, kind: s.kind, color: KIND_COLORS[s.kind] || '#bb9af7',
+            file: _fp2, depth: s.depth, doc: s.doc,
+          },
+        });
+      }
     }
-
-    // Build edges (same logic as buildElements) — uses original `added` set
+    // ---- Build edges between symbol nodes ----
     const edgeAdded = new Set();
     for (const e of snapshot.edges) {
-      const srcKey = resolveToSymbol(e.source);
-      const tgtKey = resolveToSymbol(e.target);
-      const srcId = nodeId(srcKey), tgtId = nodeId(tgtKey);
-      if (parentAdded.has(srcId) || parentAdded.has(tgtId)) continue;
+      var srcKey = resolveToSymbol(e.source), tgtKey = resolveToSymbol(e.target);
+      var srcId = nodeId(srcKey), tgtId = nodeId(tgtKey);
+      if (fileNodeIds.has(srcId) || fileNodeIds.has(tgtId)) continue;
       if (!added.has(srcId) || !added.has(tgtId)) continue;
-      const eid = srcId + '->' + tgtId;
+      var eid = srcId + '->' + tgtId;
       if (edgeAdded.has(eid)) continue;
       edgeAdded.add(eid);
-      const ec = EDGE_COLORS[e.kind] || EDGE_COLORS['references'];
+      var ec = EDGE_COLORS[e.kind] || EDGE_COLORS['references'];
       edges.push({
         data: {
           id: eid, source: srcId, target: tgtId,
-          kind: e.kind, weight: e.weight || 1,
-          color: ec.color,
-          edgeWidth: Math.min(5, 1 + (e.weight || 1) * 0.3),
-          arrow: true,
+          kind: e.kind, weight: e.weight || 1, color: ec.color,
+          edgeWidth: Math.min(5, 1 + (e.weight || 1) * 0.3), arrow: true,
         },
       });
     }
-
-    return { nodes, edges };
+    return { nodes: nodes, edges: edges };
   }
-
 
   function shortLabel(key) {
     const qn = key.qualifiedName || key.name || '';
@@ -222,7 +188,7 @@
       if (!cy) { overlay.innerHTML = ''; return; }
       overlay.innerHTML = '';
       cy.nodes().forEach(function (n) {
-        if (n.data('_isFileGroup')) return;
+        if (n.data('_isContainer')) return;
         if (n.style('display') === 'none') return;
         const pos = n.renderedPosition();
         const lbl = n.data('label');
@@ -249,7 +215,7 @@
       cy.nodes().forEach(function (n) {
         var span = map[n.id()];
         if (!span) return;
-        if (n.data('_isFileGroup')) { if (span.parentNode) span.parentNode.removeChild(span); return; }
+        if (n.data('_isContainer')) { if (span.parentNode) span.parentNode.removeChild(span); return; }
         if (n.style('display') === 'none') { span.style.display = 'none'; return; }
         span.style.display = '';
         var pos = n.renderedPosition();
@@ -277,7 +243,7 @@
     const focusDepth = node.data('depth') || 0;
 
     allNodes.forEach(function (n) {
-      if (n.data('_isFileGroup')) return;
+      if (n.data('_isContainer')) return;
       const nDepth = n.data('depth') || 0;
       const depthDiff = Math.abs(nDepth - focusDepth);
       let opacity;
@@ -312,7 +278,7 @@
     if (!cy) return;
     focusedNodeId = null;
     cy.nodes().forEach(function (n) {
-      if (n.data('_isFileGroup')) return;
+      if (n.data('_isContainer')) return;
       n.style({ opacity: 1.0, 'border-opacity': 0.8 });
     });
     cy.edges().forEach(function (e) {
@@ -323,7 +289,6 @@
     if (labelOverlay) labelOverlay.positionUpdate();
   }
 
-
   // ────────────────────────── Details panel ──────────────────────────────
 
   function showDetails(data) {
@@ -333,20 +298,36 @@
     let html = '';
 
     // File-group parent
-    if (data._isFileGroup) {
-      html += '<div><span class="node-kind kind-file">' + esc(data._filePath.replace(/^.*[\\/]/, '')) + '</span></div>';
+    if (data._isContainer) {
+      html += '<div><span class="node-kind kind-' + (data._isFolder ? 'module' : 'file') + '">' + esc(data._filePath.replace(/^.*[\\/]/, '')) + '</span></div>';
       html += '<div class="node-file">' + esc(data._filePath) + '</div>';
-      html += '<div class="node-attrs">' + data._nodeCount + ' symbols in this file</div>';
+      html += '<div class="node-attrs">' + data._nodeCount + ' items' + (data._collapsible ? ' \u00B7 click to collapse' : '') + '</div>';
 
       if (cy) {
-        const memberNodes = cy.nodes().filter(function (n) {
-          return !n.data('_isFileGroup') && n.data('file') === data._filePath;
-        });
-        html += '<div class="edge-list"><h4>Symbols (' + memberNodes.length + ')</h4>';
+        var isFolder = data._isFolder;
+        var memberNodes;
+        if (isFolder) {
+          // For folders: list immediate child nodes (sub-folders and files)
+          var folderId = data.id;
+          memberNodes = cy.nodes().filter(function (n) {
+            return n.data('parent') === folderId;
+          });
+          html += '<div class="edge-list"><h4>Contents (' + memberNodes.length + ')</h4>';
+        } else {
+          // For file containers: list symbol nodes
+          memberNodes = cy.nodes().filter(function (n) {
+            return !n.data('_isContainer') && n.data('file') === data._filePath;
+          });
+          html += '<div class="edge-list"><h4>Symbols (' + memberNodes.length + ')</h4>';
+        }
         memberNodes.forEach(function (mn) {
+          var mnKind = mn.data('kind') || (mn.data('_isFolder') ? 'folder' : (mn.data('_isFileContainer') ? 'file' : '?'));
+          var mnLabel = mn.data('label') || mn.data('_filePath') || '';
+          var mnColor = mn.data('_isFolder') ? '#737aa2' : (mn.data('_isFileContainer') ? '#565f89' : (KIND_COLORS[mn.data('kind')] || '#565f89'));
+          var hint = mn.data('_collapsible') ? (mn.data('_collapsed') ? ' [+' : ' [−') : '';
           html += '<div class="clickable-edge" data-id="' + esc(mn.id()) + '" style="padding:2px 0;color:#a9b1d6;font-size:11px;cursor:pointer" title="Click to focus">';
-          html += '<span style="color:' + (KIND_COLORS[mn.data('kind')] || '#565f89') + '">' + esc(mn.data('kind')) + '</span>  ';
-          html += esc(mn.data('label'));
+          html += '<span style="color:' + mnColor + '">' + esc(mnKind) + '</span>  ';
+          html += esc(mnLabel) + hint;
           html += '</div>';
         });
         html += '</div>';
@@ -400,20 +381,29 @@
     });
   }
 
-
   // ────────────────────────── Main render ────────────────────────────────
 
-  function render(snapshot, groupMode) {
-    const builder = groupMode ? buildCompoundElements : buildElements;
-    const el = builder(snapshot);
+  function render(snapshot) {
+    const el = buildElements(snapshot);
     const container = document.getElementById('graph-container');
     if (cy) cy.destroy();
     container.innerHTML = '<div class="tooltip">Scroll to zoom \u00B7 Drag to pan \u00B7 Click to focus \u00B7 Double-click canvas to show all</div>';
 
-    // Layout params — compound mode uses more spread to separate file groups
-    const layoutOpts = groupMode
-      ? { name: 'cose', animate: true, gravity: 0.25, numIter: 1000, idealEdgeLength: 220, nodeRepulsion: 2000000, padding: 100, randomize: true }
-      : { name: 'cose', animate: true, gravity: 0.6, numIter: 1200, idealEdgeLength: 160, nodeRepulsion: 800000, padding: 40, randomize: true };
+    // Layout: hierarchical compound mode — high repulsion on containers prevents overlap
+    const layoutOpts = {
+      name: 'cose',
+      animate: 'end',
+      animationDuration: 800,
+      gravity: 0.2,
+      numIter: 1200,
+      idealEdgeLength: 200,
+      nodeRepulsion: function (node) {
+        return node.data('_isContainer') ? 30000000 : 600000;
+      },
+      padding: 80,
+      randomize: false,
+      nodeDimensionsIncludeLabels: false,
+    };
 
     cy = cytoscape({
       container: container,
@@ -437,7 +427,7 @@
           },
         },
         {
-          selector: 'node[_isFileGroup]',
+          selector: 'node[_isFileContainer]',
           style: {
             'background-color': '#292e42',
             'background-opacity': 0.25,
@@ -446,7 +436,7 @@
             'border-opacity': 0.5,
             'border-style': 'dashed',
             shape: 'round-rectangle',
-            padding: 30,
+            padding: 50,
             'text-valign': 'top',
             'text-halign': 'center',
             'font-size': '11px',
@@ -455,8 +445,35 @@
             label: 'data(label)',
             'z-compound-depth': 'bottom',
             'z-index': -1,
-            width: 40,
-            height: 40,
+          },
+        },
+        {
+          selector: 'node[_isFolder]',
+          style: {
+            'background-color': '#1a1b2e',
+            'background-opacity': 0.35,
+            'border-width': 2,
+            'border-color': '#3b4261',
+            'border-opacity': 0.6,
+            'border-style': 'solid',
+            shape: 'round-rectangle',
+            padding: 60,
+            'text-valign': 'top',
+            'text-halign': 'center',
+            'font-size': '12px',
+            color: '#737aa2',
+            'font-weight': '700',
+            label: 'data(label)',
+            'z-compound-depth': 'bottom',
+            'z-index': -2,
+          },
+        },
+        {
+          selector: 'node[_collapsed]',
+          style: {
+            'background-opacity': 0.5,
+            'border-color': '#e0af68',
+            'border-opacity': 0.8,
           },
         },
         {
@@ -510,7 +527,7 @@
     // ── Tap node: focus; same node again: unfocus ──
     cy.on('tap', 'node', function (evt) {
       const target = evt.target;
-      if (target.data('_isFileGroup')) {
+      if (target.data('_isContainer')) {
         showDetails(target.data());
         return;
       }
@@ -522,7 +539,6 @@
       }
     });
 
-
     // ── Double-tap background → unfocus all ──
     cy.on('dblclick', function (evt) {
       if (evt.target === cy) unfocusAll();
@@ -530,34 +546,53 @@
 
     // ── Hover effects (skip file-group parents) ──
     cy.on('mouseover', 'node', function (evt) {
-      if (evt.target.data('_isFileGroup')) return;
+      if (evt.target.data('_isContainer')) return;
       if (!focusedNodeId) evt.target.style('border-color', '#e0af68');
     });
     cy.on('mouseout', 'node', function (evt) {
-      if (evt.target.data('_isFileGroup')) return;
+      if (evt.target.data('_isContainer')) return;
       if (!focusedNodeId) evt.target.style('border-color', '#2f3346');
     });
 
     // ── Focus indicator dismiss ──
+
     var dismissBtn = document.querySelector('.focus-dismiss');
     if (dismissBtn) dismissBtn.onclick = unfocusAll;
 
-    // ── Group by file toggle ──
-    document.getElementById('group-cb').onchange = function () {
-      const oldCy = cy;
-      cy = null;
-      focusedNodeId = null;
-      document.getElementById('focus-indicator').classList.remove('visible');
-      document.getElementById('node-details').innerHTML = '<div class="empty">Click a node to see details</div>';
-      oldCy.destroy();
-      render(snapshot, this.checked);
-    };
+    // ── Collapse/expand containers (folders and files) ──
+    cy.on('tap', 'node[_collapsible]', function (evt) {
+      var cyNode = evt.target;
+      var collapsed = cyNode.data('_collapsed');
+      var descendants = cyNode.descendants();
+      if (collapsed) {
+        // Expand: show all descendants, then re-apply filters so filtered-out nodes stay hidden
+        cyNode.data('_collapsed', false);
+        cyNode.removeStyle('border-color');
+        descendants.forEach(function (d) {
+          if (!d.data('search-hidden') && !d.data('path-hidden') && d.data('depth-visible') !== false) {
+            d.style('display', 'element');
+          } else {
+            d.style('display', 'none');
+          }
+        });
+        // Re-apply kind filters (which also checks search/path/depth flags)
+        if (typeof applyKindFilters === 'function') applyKindFilters();
+      } else {
+        // Collapse: hide all descendants
+        descendants.style('display', 'none');
+        cyNode.data('_collapsed', true);
+        cyNode.style('border-color', '#e0af68');
+      }
+      if (labelOverlay) labelOverlay.render();
+    });
+
+
 
     // ── Search by name ──
     document.getElementById('search').oninput = function () {
       const q = this.value.toLowerCase();
       cy.nodes().forEach(function (n) {
-        if (n.data('_isFileGroup')) return;
+        if (n.data('_isContainer')) return;
         const match = q === '' ||
           (n.data('label') || '').toLowerCase().includes(q) ||
           (n.data('qualifiedName') || '').toLowerCase().includes(q);
@@ -573,7 +608,7 @@
     document.getElementById('search-path').oninput = function () {
       const q = this.value.toLowerCase();
       cy.nodes().forEach(function (n) {
-        if (n.data('_isFileGroup')) return;
+        if (n.data('_isContainer')) return;
         const fp = (n.data('file') || '').toLowerCase();
         const matchPath = q === '' || fp.includes(q);
         n.data('path-hidden', !matchPath);
@@ -584,14 +619,13 @@
       if (labelOverlay) labelOverlay.render();
     };
 
-
     // ── Kind filters ──
     function applyKindFilters() {
       const checked = {};
       document.querySelectorAll('#filters input[type="checkbox"]').forEach(function (cb) { checked[cb.value] = cb.checked; });
       const anyUnchecked = Object.values(checked).some(function (v) { return !v; });
       cy.nodes().forEach(function (n) {
-        if (n.data('_isFileGroup')) return;
+        if (n.data('_isContainer')) return;
         const kindVisible = anyUnchecked ? (checked[n.data('kind')] !== false ? 'element' : 'none') : 'element';
         if (kindVisible === 'none') {
           n.style('display', 'none');
@@ -643,7 +677,7 @@
     function applyDepthFilter() {
       const anyDepthActive = selectedMaxDepth !== null;
       cy.nodes().forEach(function (n) {
-        if (n.data('_isFileGroup')) return;
+        if (n.data('_isContainer')) return;
         const nd = n.data('depth');
         const passDepth = !anyDepthActive || nd <= selectedMaxDepth;
         n.data('depth-visible', passDepth);
@@ -718,7 +752,7 @@
         opt.value = sorted[k];
         datalist.appendChild(opt);
       }
-      render(data, false);
+      render(data);
     })
     .catch(function (err) {
       document.getElementById('stats').textContent = 'Error loading graph.json';
