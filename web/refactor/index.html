@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CodeGraph Snapshot</title>
+<script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+
+<div id="sidebar">
+  <header>
+    <h1>⬡ CodeGraph</h1>
+    <p>Static snapshot viewer</p>
+    <div id="stats">Loading…</div>
+  </header>
+  <div id="filters"></div>
+  <div id="depth-selector"></div>
+  <div id="group-toggle">
+    <label><input type="checkbox" id="group-cb" /> Group by file</label>
+  </div>
+  <div id="font-slider">
+    <label>Text size</label>
+    <input type="range" id="font-range" min="6" max="24" value="10" step="1" />
+    <span id="font-val">10</span>
+  </div>
+  <div id="search-box">
+    <div class="search-wrap">
+      <input type="text" id="search" placeholder="Filter nodes by name…" />
+      <button class="clear-btn" data-target="search" tabindex="-1">×</button>
+    </div>
+    <div class="search-wrap">
+      <input type="text" id="search-path" placeholder="Filter by file path…" list="path-list" />
+      <button class="clear-btn" data-target="search-path" tabindex="-1">×</button>
+    </div>
+    <datalist id="path-list"></datalist>
+  </div>
+  <div id="focus-indicator">
+    <span>🔍 Focus: </span><span id="focus-label"></span>
+    <span class="focus-dismiss" title="Show all nodes">✕</span>
+  </div>
+  <div id="node-details">
+    <div class="empty">Click a node to see details</div>
+  </div>
+</div>
+<div id="graph-container"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
