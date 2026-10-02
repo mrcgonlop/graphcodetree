@@ -5,8 +5,10 @@
 
   const KIND_COLORS = {
     function: '#7aa2f7',
+    method: '#7aa2f7',
     struct: '#9ece6a',
     enum: '#bb9af7',
+    enum_variant: '#bb9af7',
     trait: '#f7768e',
     impl_block: '#e0af68',
     module: '#2ac3de',
@@ -14,21 +16,23 @@
     static: '#ff9e64',
     type_alias: '#73daca',
     macro: '#f7768e',
-    enum_variant: '#bb9af7',
     field: '#565f89',
     file: '#414868',
   };
 
   const EDGE_COLORS = {
-    calls: { color: '#7aa2f7' },
-    implements: { color: '#bb9af7' },
-    data_flow: { color: '#73daca' },
-    extends: { color: '#9ece6a' },
-    references: { color: '#565f89' },
-    contains: { color: '#2ac3de' },
+    calls: { color: '#7aa2f7', width: 2, style: 'solid', arrow: true },
+    defines: { color: '#565f89', width: 1, style: 'dotted', arrow: false },
+    contains: { color: '#414868', width: 1.5, style: 'solid', arrow: false },
+    imports: { color: '#73daca', width: 1.5, style: 'dashed', arrow: false },
+    implements: { color: '#f7768e', width: 2, style: 'dashed', arrow: true },
+    data_flow: { color: '#ff9e64', width: 2, style: 'solid', arrow: true },
+    references: { color: '#bb9af7', width: 1, style: 'dashed', arrow: false },
+    inherits: { color: '#e0af68', width: 1.5, style: 'dotted', arrow: false },
+    extends: { color: '#9ece6a', width: 1, style: 'dotted', arrow: false },
   };
 
-  const KIND_ORDER = ['function', 'struct', 'enum', 'trait', 'impl_block', 'module', 'type_alias', 'constant', 'static', 'macro', 'enum_variant', 'field'];
+  const KIND_ORDER = ['function', 'method', 'struct', 'enum', 'enum_variant', 'trait', 'impl_block', 'module', 'type_alias', 'constant', 'static', 'macro', 'field'];
 
   // ────────────────────────────── State ──────────────────────────────────
 
@@ -48,16 +52,25 @@
 
   function nodeId(key) {
     if (!key || !key.key) return '?';
-    return (key.key === 'symbol' ? 'sym:' : 'def:') + (key.qualifiedName || key.name || '?') + (key.file ? '@' + key.file : '');
+    // Use snake_case fields from the JSON schema
+    var qn = key.qualified_name || key.qualifiedName || key.name || '';
+    return (key.key === 'symbol' ? 'sym:' : 'def:') + (qn || '?') + (key.file ? '@' + key.file : '');
   }
 
-  function resolveToSymbol(ref) {
-    if (!ref) return { key: 'symbol', name: '?', qualifiedName: '?' };
-    if (ref.key && ref.key.key === 'symbol') return ref.key;
-    if (ref.resolvedTo && ref.resolvedTo.key) {
-      return ref.resolvedTo;
+  function resolveToSymbol(keyRef) {
+    // keyRef is a key object directly: { key: "symbol", qualified_name: "...", file: "..." }
+    // or { key: "anchored", ancestor: {...}, ordinal: N }
+    if (!keyRef) return null;
+    var cur = keyRef;
+    // Walk the ancestor chain (anchored -> symbol)
+    while (cur.key !== 'symbol') {
+      if (cur.key === 'anchored' && cur.ancestor) {
+        cur = cur.ancestor;
+      } else {
+        break;
+      }
     }
-    return ref.key || { key: 'symbol', name: ref.name || '?', qualifiedName: ref.qualifiedName || ref.name || '?' };
+    return cur;
   }
 
   // ────────────────────────── Element builders ───────────────────────────
@@ -73,7 +86,7 @@
       added.add(id);
       const file = n.file || 'unknown';
       if (!fileSymbols.has(file)) fileSymbols.set(file, []);
-      fileSymbols.get(file).push({ id: id, key: n.key, kind: n.kind, depth: n.depth || 0, doc: n.doc || null });
+      fileSymbols.get(file).push({ id: id, key: n.key, kind: n.kind, depth: n.depth || 0, doc: n.attrs && n.attrs.doc || null });
     }
     // ---- Helpers ----
     function folderPart(fp) { var norm = fp.replace(/\\/g, '/'), i = norm.lastIndexOf('/'); return i >= 0 ? norm.substring(0, i) : ''; }
@@ -132,7 +145,7 @@
         },
       });
       for (const s of symbols) {
-        var qn = s.key.qualifiedName || s.key.name || s.id;
+        var qn = s.key.qualified_name || s.key.qualifiedName || s.key.name || s.id;
         nodes.push({
           data: {
             id: s.id, parent: fid, label: shortLabel(s.key),
@@ -146,6 +159,7 @@
     const edgeAdded = new Set();
     for (const e of snapshot.edges) {
       var srcKey = resolveToSymbol(e.source), tgtKey = resolveToSymbol(e.target);
+      if (!srcKey || !tgtKey) continue;
       var srcId = nodeId(srcKey), tgtId = nodeId(tgtKey);
       if (fileNodeIds.has(srcId) || fileNodeIds.has(tgtId)) continue;
       if (!added.has(srcId) || !added.has(tgtId)) continue;
@@ -157,7 +171,7 @@
         data: {
           id: eid, source: srcId, target: tgtId,
           kind: e.kind, weight: e.weight || 1, color: ec.color,
-          edgeWidth: Math.min(5, 1 + (e.weight || 1) * 0.3), arrow: true,
+          edgeWidth: Math.min(5, 1 + (e.weight || 1) * 0.3), arrow: !!ec.arrow,
         },
       });
     }
@@ -165,8 +179,8 @@
   }
 
   function shortLabel(key) {
-    const qn = key.qualifiedName || key.name || '';
-    const parts = qn.split('::');
+    var qn = key.qualified_name || key.qualifiedName || key.name || key.label || '';
+    var parts = qn.split('::');
     return parts[parts.length - 1] || qn;
   }
 
