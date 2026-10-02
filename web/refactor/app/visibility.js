@@ -1,8 +1,33 @@
 // ── Visibility (single-pass filter) + container toggle ──────────────
-// Consolidates name-search, path-search, kind-filter, depth-filter,
-// and parent-collapse into one pass per node.
+// Consolidates name-search, path-search, kind-filter, depth-filter and
+// parent-collapse into one decision per node, then re-projects the edges of
+// the hidden children onto their collapsed boxes (aggregate.js) and re-applies
+// focus, which depends on the edges that actually exist.
+//
+// The symbols are settled first and the boxes after them, deepest-first: a box
+// has to know whether anything inside it is still on screen, because cytoscape
+// will not draw a node whose ancestor is hidden (see the note in
+// refreshVisibility).
 
 import { S } from './state.js';
+import { syncAggregatedEdges } from './aggregate.js';
+import { refreshFocus } from './focus.js';
+
+/// True when any container above `n` is collapsed.
+///
+/// cytoscape keeps a child's own `display` value at `element` when a parent
+/// is hidden, so "is this on screen?" cannot be answered from the element's
+/// own style — and both the label overlay and the aggregate edges need a
+/// truthful answer. Hiding such nodes here makes `display` mean exactly that.
+function hasCollapsedAncestor(n) {
+    var p = n.parent();
+    var guard = 0;
+    while (p && p.length > 0 && guard++ < 64) {
+        if (p.data('_collapsed')) return true;
+        p = p.parent();
+    }
+    return false;
+}
 
 /// Single pass: reads ALL filter states and sets `display` once per node.
 /// Called by every filter/search/toggle.
@@ -24,25 +49,37 @@ export function refreshVisibility() {
     var anyKindUnchecked = Object.values(checked).some(function (v) { return !v; });
     var depthActive = S.selectedMaxDepth !== null;
 
-    S.cy.nodes().forEach(function (n) {
-        // ── Container nodes: only name-search + path-search apply ──
+    // Symbols first, then containers deepest-first: a box's own rule needs to
+    // know whether anything inside it survived the filters. cytoscape refuses
+    // to draw a node whose *ancestor* is hidden (`visible()` walks the parents
+    // even though the child's own `display` stays `element`), so a box hidden
+    // because its own path missed the query erased the circles of the matched
+    // symbols inside it — the user saw their names on an empty canvas.
+    const ordered = S.cy.nodes('[!_isContainer]').map(function (n) { return n; })
+        .concat(S.cy.nodes('[_isContainer]').map(function (n) { return n; })
+            .sort(function (a, b) { return b.ancestors().length - a.ancestors().length; }));
+
+    ordered.forEach(function (n) {
+        // ── Container nodes: collapsed ancestors + name/path search ──
         if (n.data('_isContainer')) {
+            if (hasCollapsedAncestor(n)) { n.style('display', 'none'); return; }
             var fp = (n.data('_filePath') || '').toLowerCase();
-            var shortName = fp.replace(/^.*[/\\\\]/, '');
+            var shortName = fp.replace(/^.*[/\\]/, '');
             var nameMatch = searchQ === '' || shortName.includes(searchQ) || fp.includes(searchQ);
             var pathMatch = pathQ === '' || fp.includes(pathQ);
-            n.style('display', nameMatch && pathMatch ? 'element' : 'none');
+            // ...but a box also stays when something inside it is still on
+            // screen, or the match would lose the box it is drawn in.
+            var shownKid = n.children().filter(function (c) {
+                return c.style('display') !== 'none';
+            }).length > 0;
+            n.style('display', nameMatch && pathMatch || shownKid ? 'element' : 'none');
             return;
         }
 
         // ── Symbol nodes: check ALL filters in order ──
 
         // 1. Any parent container collapsed?
-        var p = n.parent();
-        while (p && p.length > 0) {
-            if (p.data('_collapsed')) { n.style('display', 'none'); return; }
-            p = p.parent();
-        }
+        if (hasCollapsedAncestor(n)) { n.style('display', 'none'); return; }
 
         // 2. Name search
         if (searchQ !== '') {
@@ -72,6 +109,11 @@ export function refreshVisibility() {
         n.style('display', 'element');
     });
 
+    // A collapse changes which edges exist: hand the hidden children's edges
+    // to their box, then re-apply focus (only when that actually changed —
+    // a search keystroke must not rebuild the details panel).
+    if (syncAggregatedEdges()) refreshFocus();
+
     // Sync label overlays (lightweight — no DOM rebuild)
     if (S.labelOverlay) S.labelOverlay.updatePositions();
 }
@@ -93,103 +135,3 @@ export function toggleContainer(cyNode) {
     }
     refreshVisibility();
 }
-
-// ── Box layout (non-overlapping containers) ─────────────────────────
-
-let _boxLayoutPending = false;
-
-/// Schedule a non-overlapping box layout pass via rAF.
-export function scheduleBoxLayout() {
-    if (!S.cy || _boxLayoutPending) return;
-    _boxLayoutPending = true;
-    requestAnimationFrame(function () {
-        _boxLayoutPending = false;
-        layoutBoxes();
-    });
-}
-
-/// True when `a` is an ancestor of `b` in the compound tree.
-function isAncestorOf(a, b) {
-    var p = b.parent();
-    var guard = 0;
-    while (p && p.length > 0 && guard++ < 64) {
-        if (p.id() === a.id()) return true;
-        p = p.parent();
-    }
-    return false;
-}
-
-/// Push *sibling* containers apart so they don't overlap.
-///
-/// Gated behind S.boxLayoutEnabled and OFF by default. Two things were
-/// wrong before and made this pass actively destructive:
-///   1. it compared every container pair, including a child against its
-///      own ancestors — a child box is *always* inside its parent's box,
-///      so those pairs always "overlapped" and the loop could never
-///      converge (it always ran the full iteration budget);
-///   2. it mixed coordinate spaces — `renderedBoundingBox()` is rendered
-///      (screen) space but `position()` is model space, and it applied a
-///      displacement clamped at 200/zoom model units *per iteration*, so
-///      at typical zoom it could fling a container ~20 000 units — many
-///      times the size of the whole graph.
-///
-/// Now it works purely in model space (`boundingBox()`), moves both
-/// nodes of a pair, skips nested pairs, and stops as soon as no pair
-/// overlaps.
-function layoutBoxes() {
-    if (!S.cy || !S.boxLayoutEnabled) return;
-    try {
-        var containers = [];
-        S.cy.nodes().forEach(function (n) {
-            if (!n.data('_isContainer')) return;
-            if (n.style('display') === 'none') return;
-            containers.push(n);
-        });
-        if (containers.length < 2) return;
-
-        var pad = S.boxLayoutPad;
-        var maxIter = S.boxLayoutIter;
-
-        function boxOf(n) {
-            var bb = n.boundingBox({ includeLabels: false, includeNodes: true });
-            if (!bb || !isFinite(bb.x1) || !isFinite(bb.y1) || !isFinite(bb.x2) || !isFinite(bb.y2)) return null;
-            return { node: n, x1: bb.x1 - pad, y1: bb.y1 - pad, x2: bb.x2 + pad, y2: bb.y2 + pad };
-        }
-
-        for (var iter = 0; iter < maxIter; iter++) {
-            var boxes = [];
-            for (var c = 0; c < containers.length; c++) {
-                var b0 = boxOf(containers[c]);
-                if (b0) boxes.push(b0);
-            }
-            var moved = false;
-            for (var i = 0; i < boxes.length; i++) {
-                for (var j = i + 1; j < boxes.length; j++) {
-                    var a = boxes[i], b = boxes[j];
-                    // Nested containers are not overlaps: skip them.
-                    if (isAncestorOf(a.node, b.node) || isAncestorOf(b.node, a.node)) continue;
-                    var ox = Math.min(a.x2, b.x2) - Math.max(a.x1, b.x1);
-                    var oy = Math.min(a.y2, b.y2) - Math.max(a.y1, b.y1);
-                    if (ox <= 0 || oy <= 0) continue;
-                    var ax = a.node.position('x'), ay = a.node.position('y');
-                    var bx = b.node.position('x'), by = b.node.position('y');
-                    if (ox <= oy) {
-                        var dx = ((a.x1 + a.x2) / 2 <= (b.x1 + b.x2) / 2) ? -(ox / 2) : (ox / 2);
-                        a.node.position({ x: ax + dx, y: ay });
-                        b.node.position({ x: bx - dx, y: by });
-                    } else {
-                        var dy = ((a.y1 + a.y2) / 2 <= (b.y1 + b.y2) / 2) ? -(oy / 2) : (oy / 2);
-                        a.node.position({ x: ax, y: ay + dy });
-                        b.node.position({ x: bx, y: by - dy });
-                    }
-                    moved = true;
-                }
-            }
-            if (!moved) break;
-        }
-        if (S.labelOverlay) S.labelOverlay.positionUpdate();
-    } catch (e) {
-        console.warn('layoutBoxes error:', e);
-    }
-}
-

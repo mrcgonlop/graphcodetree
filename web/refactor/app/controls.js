@@ -4,8 +4,7 @@
 // node px vs label px, cose spacing) so the presentation can be reasoned
 // about instead of guessed.
 
-import { S, resetParams, PRESETS, applyPreset } from './state.js';
-import { scheduleBoxLayout } from './visibility.js';
+import { S, resetParams, applyPreset } from './state.js';
 import { runLayout, estimateSpacing } from './layout.js';
 
 // ── Number formatting ───────────────────────────────────────────────
@@ -13,20 +12,6 @@ import { runLayout, estimateSpacing } from './layout.js';
 function fmtInt(v) { return '' + Math.round(v); }
 function fmtFloat(v) { return '' + (Math.round(v * 100) / 100); }
 function fmt3(v) { return '' + (Math.round(v * 1000) / 1000); }
-function fmtCompact(v) {
-    if (v >= 1e6) return (Math.round(v / 1e5) / 10) + 'M';
-    if (v >= 1e3) return (Math.round(v / 100) / 10) + 'k';
-    return '' + Math.round(v);
-}
-
-// ── Debounced re-layout (only when auto-relayout is on) ──────────────
-
-let _relayoutTimer = null;
-function scheduleRelayout() {
-    if (!S.autoRelayout || !S.cy) return;
-    clearTimeout(_relayoutTimer);
-    _relayoutTimer = setTimeout(function () { runLayout(); updateMetrics(); }, 250);
-}
 
 // ── Control registry (lets "Reset params" refresh every slider) ──────
 
@@ -111,7 +96,8 @@ export function updateMetrics() {
         '<span style="color:' + (ratio > 2 ? '#f7768e' : '#9ece6a') + '">(label/node ' + ratio.toFixed(1) + '\u00D7)</span><br>' +
         treeLine + '<br>' +
         'nodes ' + nNodes + ' · ' + S.engine + ' · ' + S.detail + ' · ' +
-        (S.nativeLabels ? 'native labels' : 'DOM labels');
+        (S.nativeLabels ? 'native labels' : 'DOM labels') +
+        (S.showLineNumbers ? ' \u00B7 lines shown' : '');
 }
 
 // ── Public entry point ──────────────────────────────────────────────
@@ -137,10 +123,13 @@ export function initControls() {
 
     /// Switch symbol labels between native (zoom-scaled) and DOM overlay
     /// (fixed px). Native labels also get accounted for by the layout.
+    /// Line numbers are a *data* choice, not a drawing one: the native path
+    /// picks `data(labelLine)` (built in builder.js), so toggling them never
+    /// has to rebuild the scene.
     function applyLabelMode() {
         S.cy.style()
             .selector('node[_isSymbol]')
-            .style('label', S.nativeLabels ? 'data(label)' : '')
+            .style('label', S.nativeLabels ? (S.showLineNumbers ? 'data(labelLine)' : 'data(label)') : '')
             .style('font-size', S.currentFontSize + 'px')
             .style('color', '#a9b1d6')
             .style('text-valign', 'bottom')
@@ -179,12 +168,11 @@ export function initControls() {
     /// layout.js), so changing them has to re-pack: applying the styles alone
     /// would leave symbols hanging outside boxes that were sized for the old
     /// value. The tree pass is a single deterministic sweep, so it can just
-    /// run again immediately instead of going through the box-layout rAF.
-    function sizingLive(boxPass) {
+    /// run again immediately.
+    function sizingLive() {
         return function () {
             applyGraphStyles();
             if (S.engine === 'hierarchy') runLayout();
-            else if (boxPass) scheduleBoxLayout();
         };
     }
 
@@ -198,19 +186,19 @@ export function initControls() {
         id: 'node-size-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
         get: function (s) { return s.nodeSize; },
         set: function (s, v) { s.nodeSize = v; },
-        live: sizingLive(false),
+        live: sizingLive(),
     });
     bindRange({
         id: 'pad-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
         get: function (s) { return s.containerPadding; },
         set: function (s, v) { s.containerPadding = v; },
-        live: sizingLive(true),
+        live: sizingLive(),
     });
     bindRange({
         id: 'folder-pad-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
         get: function (s) { return s.folderPadding; },
         set: function (s, v) { s.folderPadding = v; },
-        live: sizingLive(true),
+        live: sizingLive(),
     });
 
     // ── Tree geometry (read by the 'hierarchy' engine) ──
@@ -237,77 +225,24 @@ export function initControls() {
         set: function (s, v) { s.hierAspect = v; },
         live: function () { runLayout(); } });
 
-    // ── cose layout parameters (all read by the core cose layout) ──
-    bindRange({ id: 'repulsion-range', parse: function (s) { return parseInt(s, 10); }, display: fmtCompact,
-        get: function (s) { return s.layout.repulsion; },
-        set: function (s, v) { s.layout.repulsion = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'contratio-range', display: fmtFloat,
-        get: function (s) { return s.layout.containerRatio; },
-        set: function (s, v) { s.layout.containerRatio = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'gravity-range', display: fmtFloat,
-        get: function (s) { return s.layout.gravity; },
-        set: function (s, v) { s.layout.gravity = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'idealedge-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
-        get: function (s) { return s.layout.idealEdgeLength; },
-        set: function (s, v) { s.layout.idealEdgeLength = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'elasticity-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
-        get: function (s) { return s.layout.edgeElasticity; },
-        set: function (s, v) { s.layout.edgeElasticity = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'nesting-range', display: fmtFloat,
-        get: function (s) { return s.layout.nestingFactor; },
-        set: function (s, v) { s.layout.nestingFactor = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'componentspace-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
-        get: function (s) { return s.layout.componentSpacing; },
-        set: function (s, v) { s.layout.componentSpacing = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'nodeoverlap-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
-        get: function (s) { return s.layout.nodeOverlap; },
-        set: function (s, v) { s.layout.nodeOverlap = v; },
-        live: scheduleRelayout });
-    bindRange({ id: 'numiter-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
-        get: function (s) { return s.layout.numIter; },
-        set: function (s, v) { s.layout.numIter = v; },
-        live: scheduleRelayout });
+    // ── Outer pad (applied by every engine as the layout padding) ──
     bindRange({ id: 'layoutpad-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
         get: function (s) { return s.layout.layoutPadding; },
         set: function (s, v) { s.layout.layoutPadding = v; },
-        live: scheduleRelayout });
-
-    // ── Non-overlap box pass (off by default) ──
-    bindRange({ id: 'boxpad-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
-        get: function (s) { return s.boxLayoutPad; },
-        set: function (s, v) { s.boxLayoutPad = v; },
-        live: function () { scheduleBoxLayout(); } });
-    bindRange({ id: 'boxiter-range', parse: function (s) { return parseInt(s, 10); }, display: fmtInt,
-        get: function (s) { return s.boxLayoutIter; },
-        set: function (s, v) { s.boxLayoutIter = v; },
-        live: function () { scheduleBoxLayout(); } });
+        live: function () { runLayout(); } });
 
     // ── Selects ──
-    const engineSel = document.getElementById('engine-select');
+    // The engine is the containment tree, full stop: a select for cose/grid/
+    // breadthfirst used to sit here and picking one scattered the boxes the
+    // hierarchy exists to keep. Only the detail level is still a choice.
     const detailSel = document.getElementById('detail-select');
 
     /// Push the live state back into the selects. Needed after a preset or
-    /// a reset, both of which can change the engine or the detail level.
+    /// a reset, both of which can change the detail level.
     function syncSelects() {
-        if (engineSel) engineSel.value = S.engine;
         if (detailSel) detailSel.value = S.detail;
     }
 
-    if (engineSel) {
-        engineSel.value = S.engine;
-        engineSel.addEventListener('change', function () {
-            S.engine = this.value;
-            runLayout();
-            updateMetrics();
-        });
-    }
     if (detailSel) {
         detailSel.value = S.detail;
         detailSel.addEventListener('change', function () {
@@ -318,14 +253,6 @@ export function initControls() {
     }
 
     // ── Checkboxes ──
-    const boxChk = document.getElementById('box-enabled');
-    if (boxChk) {
-        boxChk.checked = S.boxLayoutEnabled;
-        boxChk.addEventListener('change', function () {
-            S.boxLayoutEnabled = this.checked;
-            if (S.boxLayoutEnabled) scheduleBoxLayout();
-        });
-    }
     const nlChk = document.getElementById('native-labels');
     if (nlChk) {
         nlChk.checked = S.nativeLabels;
@@ -336,10 +263,18 @@ export function initControls() {
             updateMetrics();
         });
     }
-    const autoChk = document.getElementById('auto-relayout');
-    if (autoChk) {
-        autoChk.checked = S.autoRelayout;
-        autoChk.addEventListener('change', function () { S.autoRelayout = this.checked; });
+
+    // Line numbers. The DOM overlay is the only surface that needs a *rebuild*
+    // (each span's text changes); the native path just re-picks its label data.
+    const lnChk = document.getElementById('show-lines');
+    if (lnChk) {
+        lnChk.checked = S.showLineNumbers;
+        lnChk.addEventListener('change', function () {
+            S.showLineNumbers = this.checked;
+            applyLabelMode();
+            if (!S.nativeLabels && S.labelOverlay) S.labelOverlay.render();
+            updateMetrics();
+        });
     }
 
     // ── Buttons ──
@@ -354,8 +289,8 @@ export function initControls() {
         resetParams();
         refreshControlValues();
         syncSelects();
-        if (boxChk) boxChk.checked = S.boxLayoutEnabled;
         if (nlChk) nlChk.checked = S.nativeLabels;
+        if (lnChk) lnChk.checked = S.showLineNumbers;
         applyGraphStyles();
         applyLabelMode();
         if (S.rebuild) S.rebuild(); else runLayout();

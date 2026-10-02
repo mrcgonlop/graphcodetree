@@ -29,3 +29,21 @@ export function shortLabel(key) {
     var parts = qn.split('::');
     return parts[parts.length - 1] || qn;
 }
+
+/// `crates/ir/src/node.rs` — the path as a reader would type it (the
+/// extractor emits `.\\crates\\...`).
+export function relPath(p) {
+    return String(p || '').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+/// The address of a node: `crates/ir/src/node.rs:42:8`. The line is the one a
+/// text editor shows (tree-sitter rows are 0-based; builder.js already turned
+/// them into 1-based `line`/`col`), so the readers of this string — the details
+/// panel, the label overlay's tooltip — never have to remember the off-by-one.
+/// Falls back to the bare path for a node the snapshot gave no span for.
+export function addressOf(data) {
+    var p = relPath(data.file || data._filePath);
+    if (data.line === null || data.line === undefined) return p;
+    var col = (data.col === null || data.col === undefined) ? '' : ':' + data.col;
+    return p + ':' + data.line + col;
+}

@@ -9,7 +9,6 @@
 
 import { S } from './state.js';
 import { BORDERS } from './constants.js';
-import { scheduleBoxLayout } from './visibility.js';
 
 /// Effective node repulsion for leaf symbols.
 export function nodeRepulsionValue() { return S.layout.repulsion; }
@@ -90,7 +89,7 @@ export function buildLayoutOptions() {
     };
 }
 
-/// Re-run the current layout, then refresh overlays + the box pass.
+/// Re-run the current layout, then refresh the label overlays.
 /// Every engine goes through the same path — `hierarchy` is registered as a
 /// normal cytoscape layout (see hierarchy.js), so nothing here is special
 /// cased and `.one('layoutstop', …)` behaves identically for all of them.
@@ -108,9 +107,8 @@ function onLayoutStop() {
     } catch (e) {
         console.warn('layoutstop overlay refresh error:', e);
     }
-    scheduleBoxLayout();
+    // One delayed re-fit, after the label overlay has measured the new boxes.
     setTimeout(function () {
-        scheduleBoxLayout();
         if (S.cy) S.cy.fit(S.cy.elements(), 50);
     }, 100);
 }

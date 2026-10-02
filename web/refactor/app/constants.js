@@ -29,6 +29,33 @@ export const EDGE_COLORS = {
     extends: { color: '#9ece6a', width: 1, style: 'dotted', arrow: false },
 };
 
+// ── Edge direction ──────────────────────────────────────────────────
+// A tag says *what kind of relation* an edge is; direction says which way it
+// runs. Two `calls` edges on the same picture used to be indistinguishable
+// apart from an 8px arrow head, which is useless when the question is "what
+// does this call?" against "who calls this?".
+//
+// So while a node is focused, the edges touching it are recoloured by
+// direction — outgoing in light cyan, incoming in pink — and the tag stays
+// readable from the line style/width (see focus.js) and from the details
+// panel, which labels the two groups with the same colours (details.js).
+//
+// The incoming hue is deliberately the same pink `implements` edges use: every
+// warm hue in the palette is already some tag, and `#f7768e` is the one whose
+// tag (`implements`, 10 edges in this snapshot) is rare enough not to compete.
+// A pink *tag* edge sitting next to a pink *incoming* edge is the one case the
+// colour alone cannot separate — the arrow head and the legend still do, and
+// the harness pins that a focus/unfocus round trip restores every edge's own
+// colour exactly.
+export const DIRECTION_COLORS = {
+    out: '#7dcfff',
+    in: '#f7768e',
+};
+
+/// How a direction is worded and drawn in the details panel.
+export const DIRECTION_NAMES = { out: 'Outgoing', in: 'Incoming' };
+export const DIRECTION_ARROWS = { out: '\u2192', in: '\u2190' };
+
 // ── Node geometry shared with the layout engine ─────────────────────
 // cytoscape draws a node's border *outside* the width it is given, and a
 // compound node's border outside its padding, so these widths are part of

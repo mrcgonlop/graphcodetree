@@ -73,12 +73,34 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 #node-details .edge-list { margin-top: 10px; }
 #node-details .edge-list h4 { font-size: 11px; font-weight: 600; color: #565f89; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
 #node-details .edge-list .edge-item { padding: 2px 0; color: #a9b1d6; }
+/* rows: `tag → other :line`. The tag keeps its edge colour, the arrow carries
+   the direction colour, the name is the thing you actually want to read, and
+   the line (where the relation is written) is deliberately the quietest. */
+#node-details .edge-list .clickable-edge { padding: 2px 4px; border-radius: 3px; cursor: pointer; transition: background 0.15s; }
+#node-details .edge-list .edge-kind { font-weight: 600; margin-right: 5px; }
+#node-details .edge-list .edge-arrow { font-weight: 600; margin-right: 5px; }
+#node-details .edge-list .edge-other { color: #7aa2f7; }
+#node-details .edge-list .edge-locus { color: #565f89; margin-left: 4px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; }
+/* A member (a struct field, an impl method) shows its own signature under the
+   row, because that is the "class arguments" bit that was missing. */
+#node-details .edge-list .member-sig { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; color: #565f89; padding-left: 14px; white-space: pre-wrap; }
 #graph-container { flex: 1; background: #0f0f1a; position: relative; }
 #graph-container .tooltip { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: #565f89; font-size: 11px; pointer-events: none; }
+/* The `:412` a DOM label carries when line numbers are on. Part of the label
+   text (and so still findable with Ctrl+F), but smaller and dimmer, so a
+   column of them reads as an index instead of as part of the name. */
+#label-overlay .ln { color: #565f89; font-size: 0.85em; margin-left: 1px; }
 #focus-indicator { display: none; padding: 6px 18px; background: #1f2335; border-bottom: 1px solid #2f3346; font-size: 11px; color: #e0af68; align-items: center; gap: 6px; }
 #focus-indicator.visible { display: flex; }
 #focus-indicator .focus-dismiss { margin-left: auto; cursor: pointer; color: #565f89; font-size: 13px; padding: 0 4px; }
 #focus-indicator .focus-dismiss:hover { color: #f7768e; }
+/* The direction legend: the two colours focus.js paints a focused node's own
+   edges with (outgoing / incoming), so the star around the node can be read
+   without clicking anything. Sentences, not a guess at a hue. */
+#focus-indicator .dir-legend { display: flex; align-items: center; gap: 4px; margin-left: 8px; color: #565f89; font-size: 10px; }
+#focus-indicator .dir-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
+#focus-indicator .dir-legend .dir-out { background: #7dcfff; }
+#focus-indicator .dir-legend .dir-in { background: #f7768e; }
 .kind-function { background: #7aa2f7; }
 .kind-struct  { background: #9ece6a; }
 .kind-enum    { background: #bb9af7; }

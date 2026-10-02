@@ -4,7 +4,8 @@ import { S } from './state.js';
 import { KIND_COLORS, KIND_ORDER, BORDERS } from './constants.js';
 import { esc } from './utils.js';
 import { buildElements } from './builder.js';
-import { refreshVisibility, toggleContainer, scheduleBoxLayout } from './visibility.js';
+import { refreshVisibility, toggleContainer } from './visibility.js';
+import { resetAggregatedEdges } from './aggregate.js';
 import { createLabelOverlays } from './overlay.js';
 import { focusNode, unfocusAll } from './focus.js';
 import { showDetails, setFocusHandler } from './details.js';
@@ -27,6 +28,9 @@ registerHierarchyLayout(typeof cytoscape === 'function' ? cytoscape : null);
 function render(snapshot) {
     const el = buildElements();
     const container = document.getElementById('graph-container');
+    // The aggregate edges live inside the instance that is about to be
+    // destroyed, so drop the cache before pulling the plug on it.
+    resetAggregatedEdges();
     if (S.cy) S.cy.destroy();
     container.innerHTML = '<div class="tooltip">Scroll to zoom \u00B7 Drag to pan \u00B7 Click to focus \u00B7 Double-click canvas to show all</div>';
 
@@ -123,6 +127,16 @@ function render(snapshot) {
                 },
             },
             {
+                // Edges standing in for the ones inside a collapsed box
+                // (aggregate.js): dashed, so a summary never reads as a real
+                // single call, and one width step up per summed weight.
+                selector: 'edge[_agg]',
+                style: {
+                    'line-style': 'dashed',
+                    'arrow-scale': 0.5,
+                },
+            },
+            {
                 selector: ':selected',
                 style: { 'border-width': BORDERS.select, 'border-color': '#e0af68' },
             },
@@ -139,7 +153,7 @@ function render(snapshot) {
             S.cy.minZoom(0.05);
             S.cy.maxZoom(10);
             refreshVisibility();
-            setTimeout(function () { scheduleBoxLayout(); S.cy.fit(S.cy.elements(), 50); }, 100);
+            setTimeout(function () { S.cy.fit(S.cy.elements(), 50); }, 100);
         } catch (e) {
             console.error('Error after layout stop:', e);
         }
@@ -184,7 +198,9 @@ function render(snapshot) {
     });
     cy.on('mouseout', 'node', function (evt) {
         if (evt.target.data('_isContainer')) return;
-        if (!S.focusedNodeId) evt.target.style('border-color', '#2f3346');
+        // Back to the stylesheet colour rather than a hardcoded one, so the
+        // hover ring and the focus ring can never disagree.
+        if (!S.focusedNodeId) evt.target.removeStyle('border-color');
     });
 
     // Focus indicator dismiss

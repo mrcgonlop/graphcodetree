@@ -2,16 +2,16 @@
 //
 // Runs the REAL app modules (state, builder, layout, hierarchy) against the
 // REAL graph.json inside a REAL (headless) cytoscape, with the same sizing
-// rules main.js applies, and then asserts the invariants that force-directed
-// cose has never satisfied:
+// rules main.js applies, and then asserts the invariants the view depends on:
 //
 //   1. every child box sits inside its parent box — measured, not assumed;
 //   2. sibling boxes never overlap, at any level;
 //   3. every box is snug and symmetric around its own position, i.e.
 //      exactly (children + padding) — which is what makes 1 and 2 hold;
 //   4. the result is deterministic: two runs give identical positions;
-//   5. the packed tree is far smaller than the cose cloud, which is the
-//      actual point — at fit-to-view the symbols end up readable.
+//   5. the two shipped presets really change the packing (compact stays
+//      legible at fit-to-view; roomy spreads the same tree out), and both
+//      keep invariants 1-3.
 //
 // Run: node --experimental-default-type=module .cgtest/validate.mjs
 
@@ -254,6 +254,9 @@ ok(!!S.hierarchyStats, 'S.hierarchyStats populated');
 console.log('   stats ' + JSON.stringify(S.hierarchyStats));
 const rFull = checkInvariants(cyFull, 'full');
 const extFull = extentOf(cyFull);
+// Freeze the sizing that produced extFull: later sections apply presets, so
+// reading S.* at report time would mix two different parameter sets.
+const fullMetrics = { name: 'detail = full', ext: extFull, font: S.currentFontSize, nodeSize: S.nodeSize };
 console.log('   boxes checked ' + rFull.containers + '  sibling pairs ' + rFull.pairs + '  levels ' + rFull.levels);
 
 // ── 2. determinism ──
@@ -267,32 +270,34 @@ console.log('   boxes checked ' + rFull.containers + '  sibling pairs ' + rFull.
     cyB.destroy();
 }
 
-// ── 3. the same tree, the old way (real cose) ──
-console.log('\n## same graph / cose (force-directed), for comparison');
-applyPreset('cose defaults');
-const cyCose = createCy('full');
-const t0 = Date.now();
-const coseLayout = cyCose.layout(buildLayoutOptions());
-coseLayout.run();
-console.log('   cose took ' + (Date.now() - t0) + 'ms');
-const extCose = extentOf(cyCose);
-const boxedCose = (function () {
-    // how many children does cose leave outside their own box?
-    const g = groups(cyCose);
-    let bad = 0, pairs = 0, overlaps = 0, uncontained = 0;
-    const bx = new Map();
-    for (const n of g.nodes) bx.set(n.id(), box(n));
-    for (const [pid, list] of g.kids) {
-        for (let i = 0; i < list.length; i++) {
-            for (let j = i + 1; j < list.length; j++) {
-                pairs++;
-                if (overlapArea(bx.get(list[i].id()), bx.get(list[j].id())) > 0) overlaps++;
-            }
-        }
-    }
-    return { overlaps: overlaps, pairs: pairs, uncontained: uncontained };
-})();
-cyCose.destroy();
+// ── 3. the two shipped presets, side by side ──
+// There is no second engine to compare against any more: the sidebar offers a
+// single containment tree (the force-directed/box-layout entries were removed
+// because they scatter the boxes). So the comparison that matters is between
+// the presets the user actually has — they must change the packing, and the
+// containment invariants must survive whatever they do.
+console.log('\n## presets side by side');
+const presetMetrics = {};
+for (const name of Object.keys(PRESETS)) {
+    ok(applyPreset(name) === true, 'preset "' + name + '" exists in PRESETS');
+    ok(S.engine === 'hierarchy', 'preset "' + name + '" keeps the tree engine', S.engine);
+    const cy = createCy('full');
+    hierarchyLayout(cy, buildLayoutOptions());
+    const e = extentOf(cy);
+    presetMetrics[name] = { name: name, ext: e, font: S.currentFontSize, nodeSize: S.nodeSize };
+    console.log('   ' + name.padEnd(16) + 'extent ' + Math.round(e.w) + ' x ' + Math.round(e.h) + 'u' +
+        '   nodeGap ' + S.hierNodeGapX + '/' + S.hierNodeGapY + '  rowGap ' + S.hierRowGap);
+    checkInvariants(cy, 'preset ' + name);
+    cy.destroy();
+}
+const compactM = presetMetrics['tree (compact)'], roomyM = presetMetrics['tree (roomy)'];
+if (compactM && roomyM) {
+    ok(roomyM.ext.w > compactM.ext.w * 1.2 && roomyM.ext.h > compactM.ext.h * 1.2,
+        'the roomy preset really spreads the tree out (compact is not silently reused)',
+        Math.round(compactM.ext.w) + 'x' + Math.round(compactM.ext.h) + 'u vs ' +
+        Math.round(roomyM.ext.w) + 'x' + Math.round(roomyM.ext.h) + 'u');
+}
+applyPreset('tree (compact)');
 
 // ── 4. the other detail levels ──
 S.engine = 'hierarchy';
@@ -309,18 +314,31 @@ for (const detail of ['files', 'flat']) {
 
 // ── 5. what all of that means at fit-to-view ──
 console.log('\n## fit-to-view readability (' + VP.w + 'x' + VP.h + ' viewport; labels are DOM overlays at a fixed ' + S.currentFontSize + 'px)');
-function report(name, ext) {
-    const z = Math.min(VP.w / ext.w, VP.h / ext.h);
-    const nodePx = S.nodeSize * z;
-    console.log('   ' + name.padEnd(10) + 'extent ' + Math.round(ext.w) + ' x ' + Math.round(ext.h) + 'u' +
+/// Fit-to-view numbers for one frozen measurement: how much of the viewport
+/// the graph fills, what that leaves for a symbol, and how the fixed-px label
+/// compares to the symbol it sits under.
+function report(m) {
+    const z = Math.min(VP.w / m.ext.w, VP.h / m.ext.h);
+    const nodePx = m.nodeSize * z;
+    console.log('   ' + m.name.padEnd(16) + 'extent ' + Math.round(m.ext.w) + ' x ' + Math.round(m.ext.h) + 'u' +
         '   zoom ' + z.toFixed(3) + '   node ' + nodePx.toFixed(1) + 'px' +
-        '   label/node ' + (S.currentFontSize / nodePx).toFixed(2) + 'x');
-    return { z: z, nodePx: nodePx };
+        '   label/node ' + (m.font / nodePx).toFixed(2) + 'x');
+    return { z: z, nodePx: nodePx, font: m.font };
 }
-const rh = report('hierarchy', extFull);
-const rc = report('cose', extCose);
-ok(rh.nodePx > rc.nodePx * 2, 'tree puts nodes at least 2x bigger than cose at fit',
-    rh.nodePx.toFixed(1) + 'px vs ' + rc.nodePx.toFixed(1) + 'px');
+const rh = report(fullMetrics);
+const rc = compactM ? report(compactM) : null;
+const rr = roomyM ? report(roomyM) : null;
+
+// The labels are DOM overlays at a fixed pixel size, so "readable" means the
+// symbols do not shrink below the point where the overlay text swamps them.
+ok(rh.nodePx >= 10, 'at fit-to-view a symbol is at least 10px across',
+    rh.nodePx.toFixed(1) + 'px');
+ok(rh.font / rh.nodePx <= 1.2, '...and a fixed-size label is no wider than the symbol under it',
+    (rh.font / rh.nodePx).toFixed(2) + 'x');
+if (rc && rr) {
+    ok(rc.nodePx > rr.nodePx, 'the compact preset keeps symbols bigger at fit than the roomy one',
+        rc.nodePx.toFixed(1) + 'px vs ' + rr.nodePx.toFixed(1) + 'px');
+}
 
 console.log('\n## largest boxes in the tree');
 {
@@ -333,13 +351,18 @@ console.log('\n## largest boxes in the tree');
     }
 }
 
-// ── 6. presets still route correctly ──
+// ── 6. the presets are self-consistent ──
+// Section 3 already ran each preset through the engine; this pins the values
+// they are documented to set, so a preset cannot silently stop tuning anything
+// (the `engine` check is the important one: there is only one engine now, and
+// a preset that reached for a force layout would be a regression).
 console.log('\n## presets');
 for (const name of Object.keys(PRESETS)) {
-    const okPreset = applyPreset(name) === true;
-    const routed = (name.indexOf('tree') === 0) ? S.engine === 'hierarchy' : S.engine === 'cose';
+    const applied = applyPreset(name) === true;
+    ok(applied && S.engine === 'hierarchy', 'preset "' + name + '" applied and stayed on the tree engine',
+        S.engine);
     const gapOk = (name === 'tree (roomy)') ? S.hierRowGap === 120 : true;
-    ok(okPreset && routed && gapOk, 'preset "' + name + '" applied and routed', S.engine + ' rowGap=' + S.hierRowGap);
+    ok(gapOk, 'preset "' + name + '" sets its documented row gap', 'rowGap=' + S.hierRowGap);
 }
 
 // ── summary ──

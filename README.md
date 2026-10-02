@@ -47,7 +47,7 @@ file edit ------>|  cg-extract      |--- KeyOp[] (NodeKey/EdgeKey-based, self-co
 | **Intents** | `cg-intent` | ❌ Not started | Empty | EditIntent validation rules, span→text compilation, legality table |
 | **Projection** | `cg-project` | 🔴 Stubs only | Stubs | `DetailLevel` enum + `render_map()` signature exist, no implementation |
 | **Server** | `cg-server` | ❌ Not started | Empty | axum WebSocket server, file watcher (notify), delta broadcast |
-| **CLI** | `cg-cli` | `crates/cli/` | 🟡 Mostly done | clap-based command runner, extract-and-json-serialize pipeline, no store or enrichment wiring yet |
+| **CLI** | `cg-cli` | `crates/cli/` | 🟡 Mostly done | clap-based command runner; full extract → store → enrich → snapshot pipeline with `--output` / `--demo` |
 
 ### Key design choices
 
@@ -115,7 +115,7 @@ The `extract_identifier_name` helper unwraps `&`, `&mut`, `*`, and field express
 
 ## Query File
 
-The project includes a tree-sitter query file (`queries/rust.scm`) that drives capture-based extraction:
+The project carries a tree-sitter query file (`queries/rust.scm`) that declares the capture vocabulary the extractors converge on:
 
 ```scheme
 (function_item name: (identifier) @name) @definition.function
@@ -124,11 +124,30 @@ The project includes a tree-sitter query file (`queries/rust.scm`) that drives c
 (use_declaration) @import
 ```
 
-This provides an alternative, query-driven extraction path alongside the direct AST walk in the Rust extractor.
+The file is **documentation, not a driver**: extraction today is the direct AST walk in `crates/extract/src/rust.rs`, and nothing loads the `.scm`. It is kept as the declared vocabulary for the per-language profiles — see [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md), which makes the profile and the query file agree by test.
 
 ## Planned Languages
 
-The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScript**, **TSX**, **JavaScript**, **Go**, **C**, **C++**, **Java**. Extractors beyond Rust are forthcoming.
+The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScript**, **TSX**, **JavaScript**, **Go**, **C**, **C++**, **Java**. Only Rust is extracted today. Python and JavaScript are the next two, and the point of that work is to make every tree-sitter language a bounded addition rather than a new extractor: the plan, the design seam and the per-language notes live in [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md).
+
+## Web view
+
+`web/refactor/` is a static, no-build Cytoscape.js viewer of a snapshot: a
+deterministic containment layout (folder → file → symbol boxes that never
+overlap), click-to-focus with incident edges recoloured by direction
+(cyan = outgoing, pink = incoming), a details panel showing signature, address,
+visibility, AST kind, doc and members, label overlays with line numbers,
+aggregate edges for collapsed boxes, search/kind/depth filters, and presets.
+
+```bash
+cargo run --release -p cg-cli -- enrich . --output web/refactor/graph.json
+python -m http.server 8000     # then open http://localhost:8000/web/refactor/
+```
+
+Full documentation — the `graph.json` schema, the layout invariants, the module
+map, the colour reference, the interaction cheatsheet and the two Node test
+harnesses — is in [web/README.md](web/README.md). `web/demo/` is the older
+single-file viewer, kept for reference.
 
 ## Roadmap
 
@@ -149,7 +168,7 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 - [x] Cross-file import resolution (qualified-name lookup across files)
 - [x] Cross-file call graph enrichment (resolves `imported`, `path_unresolved`, `method_unresolved` call sites)
 - [x] **Depth / nesting level**: each definition node carries a `depth: u32` field (top-level = 0, nested inside modules/impls = 1, fields/variants inside structs/enums = 2, etc.), used for proportional dimming during focus mode in the visualizer
-- [ ] Extract Python, TypeScript, Go via tree-sitter queries
+- [ ] **Multi-language extraction**: Python and JavaScript first, then any tree-sitter grammar — see [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md)
 - [ ] Crate-graph builder (external dependency discovery from `Cargo.toml`)
 
 ### Phase 3 -- Semantic enrichment (next)
@@ -160,7 +179,7 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 
 ### Phase 4 -- Server & real-time
 - [ ] `cg-server`: axum WebSocket server, file watcher (notify), delta broadcast
-- [ ] `web/`: TypeScript normalized store, Cytoscape.js graph canvas, Monaco code pane
+- [~] `web/`: plain-JS ES-module Cytoscape.js viewer ships in `web/refactor/` ([web/README.md](web/README.md)); TypeScript normalized store and Monaco code pane still to do, along with `cg-server` deltas
 - [ ] `codegraph serve`: CLI command to start the dev server
 - [ ] Live incremental re-extraction on file save
 
@@ -169,7 +188,34 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 - [ ] Aider-style text map with inline `[n:ID]` references
 - [ ] Semantic zoom: collapse modules into summary edges within token budget
 
-## Next Session Goals
+## Next Session — multi-language extraction
+
+The next session's goal is to stop being Rust-shaped: extraction becomes
+*language-parameterised*, with **Python** and **JavaScript** as the two
+languages that prove it, and every other tree-sitter grammar reduced to a
+bounded addition:
+
+- one shared walker (`walk.rs`) with no grammar kind strings in it, plus a
+  `LangProfile` per language carrying its grammar, item kinds, doc/signature
+  rules, visibility rule, import flattener and qualified-name separator;
+- CLI dispatch by file extension (`collect_rs_files` → `collect_source_files`),
+  so one snapshot can hold several languages;
+- the enrichers lose their `crate::` / `mod.rs` / `ImplBlock` assumptions;
+- the web view gains a language badge and filter;
+- acceptance is a property, not a list: *adding a language touches no shared file
+  except the profile registry and the Cargo manifest.*
+
+Full plan, phase-by-phase checklists, the Rust-specific code inventory (with
+file:line anchors), Python/JavaScript node-kind tables, the decisions to settle
+first (new `NodeKind::Class`, new `Visibility` variants, the qualified-name
+separator, the fate of `queries/*.scm`), the verification commands and the risk
+table: **[docs/NEXT-SESSION.md](docs/NEXT-SESSION.md)**.
+
+Baseline to protect while doing it: `cargo test --workspace` = 14 passed /
+1 ignored, `.cgtest/validate.mjs` = 44 assertions, `.cgtest/wiring.mjs` =
+236 assertions, and this repo's snapshot = 393 nodes / 2 252 edges.
+
+## Backlog (still open)
 
 ### 1. Crate-graph & TOML discovery
 - [ ] Parse `Cargo.toml` files for external dependency names → map to `crate::` import prefixes
@@ -181,13 +227,13 @@ The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScrip
 - [ ] Resolve `super::` and `crate::`-relative paths by walking directory hierarchy
 - [ ] Handle glob re-exports (`pub use foo::*;`)
 
-### 4. Visualizer polish
+### 3. Visualizer polish
 - [ ] Collapsible edge legend with color swatches and checkboxes to toggle edge kinds
 - [ ] "Show only connected" toggle that hides isolated nodes
 - [ ] Depth slider: filter nodes by max depth to see only shallow vs. deep structure
 - [ ] PNG export button for the graph canvas
 
-### 5. Export & stats
+### 4. Export & stats
 - [ ] Per-kind edge counts in the stats header (how many Calls, Imports, etc.)
 - [ ] Node/edge count changes after filtering/searching
 - [ ] JSON schema documentation page

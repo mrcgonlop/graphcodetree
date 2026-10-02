@@ -47,16 +47,7 @@
   </div>
   <div id="metrics">metrics…</div>
   <details id="pipeline-panel" class="panel" open>
-    <summary>Pipeline (isolate a stage)</summary>
-    <div class="ctrl-group">
-      <label>Engine</label>
-      <select id="engine-select">
-        <option value="hierarchy">tree (containment)</option>
-        <option value="cose">cose (force)</option>
-        <option value="grid">grid</option>
-        <option value="breadthfirst">breadthfirst</option>
-      </select>
-    </div>
+    <summary>View &mdash; what the boxes are</summary>
     <div class="ctrl-group">
       <label>Detail</label>
       <select id="detail-select">
@@ -66,19 +57,16 @@
       </select>
     </div>
     <div class="ctrl-group">
-      <label style="min-width:auto"><input type="checkbox" id="box-enabled" /> Box&#8209;overlap pass</label>
-    </div>
-    <div class="ctrl-group">
       <label style="min-width:auto"><input type="checkbox" id="native-labels" /> Native labels (zoom&#8209;scaled)</label>
     </div>
     <div class="ctrl-group">
-      <label style="min-width:auto"><input type="checkbox" id="auto-relayout" /> Auto re&#8209;layout</label>
+      <label style="min-width:auto"><input type="checkbox" id="show-lines" /> Line numbers on labels</label>
     </div>
   </details>
 
   <details id="params-panel" class="panel" open>
     <summary>Layout parameters</summary>
-    <div class="param-group">Tree geometry &mdash; hierarchy engine</div>
+    <div class="param-group">Tree geometry &mdash; containment packing</div>
     <div class="ctrl-group">
       <label>Node gap X</label>
       <input type="range" id="hier-nodegapx-range" min="0" max="80" value="24" step="2" />
@@ -104,75 +92,14 @@
       <input type="range" id="hier-aspect-range" min="0.6" max="3" value="1.7" step="0.05" />
       <span id="hier-aspect-val">1.7</span>
     </div>
-
-    <div class="param-group">cose forces</div>
     <div class="ctrl-group">
-      <label>Repulsion</label>
-      <input type="range" id="repulsion-range" min="200" max="400000" value="2048" step="100" />
-      <span id="repulsion-val">2k</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Container &times;</label>
-      <input type="range" id="contratio-range" min="1" max="20" value="4" step="0.5" />
-      <span id="contratio-val">4</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Gravity</label>
-      <input type="range" id="gravity-range" min="0" max="3" value="1" step="0.05" />
-      <span id="gravity-val">1</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Ideal edge</label>
-      <input type="range" id="idealedge-range" min="10" max="300" value="60" step="5" />
-      <span id="idealedge-val">60</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Elasticity</label>
-      <input type="range" id="elasticity-range" min="4" max="200" value="32" step="4" />
-      <span id="elasticity-val">32</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Nesting factor</label>
-      <input type="range" id="nesting-range" min="0.2" max="5" value="1.2" step="0.1" />
-      <span id="nesting-val">1.2</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Component space</label>
-      <input type="range" id="componentspace-range" min="0" max="300" value="40" step="5" />
-      <span id="componentspace-val">40</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Node overlap</label>
-      <input type="range" id="nodeoverlap-range" min="0" max="50" value="4" step="1" />
-      <span id="nodeoverlap-val">4</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Layout padding</label>
+      <label>Outer pad</label>
       <input type="range" id="layoutpad-range" min="0" max="200" value="30" step="5" />
       <span id="layoutpad-val">30</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Iterations</label>
-      <input type="range" id="numiter-range" min="100" max="3000" value="1000" step="50" />
-      <span id="numiter-val">1000</span>
-    </div>
-    <div class="param-group">overlap pass &mdash; cose only</div>
-    <div class="ctrl-group">
-      <label>Box pad</label>
-      <input type="range" id="boxpad-range" min="0" max="100" value="20" step="2" />
-      <span id="boxpad-val">20</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Box iterations</label>
-      <input type="range" id="boxiter-range" min="1" max="40" value="8" step="1" />
-      <span id="boxiter-val">8</span>
     </div>
     <div class="ctrl-actions">
       <button class="ctrl-btn preset-btn" data-preset="tree (compact)">tree compact</button>
       <button class="ctrl-btn preset-btn" data-preset="tree (roomy)">tree roomy</button>
-      <button class="ctrl-btn preset-btn" data-preset="cose defaults">cose defaults</button>
-      <button class="ctrl-btn preset-btn" data-preset="tight">tight</button>
-      <button class="ctrl-btn preset-btn" data-preset="loose / legacy bug">legacy bug</button>
     </div>
     <div class="ctrl-actions">
       <button id="reset-params-btn" class="ctrl-btn">Reset params</button>
@@ -191,6 +118,7 @@
   </div>
   <div id="focus-indicator">
     <span>🔍 Focus: </span><span id="focus-label"></span>
+    <span class="dir-legend"><i class="dir-out"></i>outgoing <i class="dir-in"></i>incoming</span>
     <span class="focus-dismiss" title="Show all nodes">✕</span>
   </div>
   <div id="node-details">
