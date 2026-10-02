@@ -12,6 +12,10 @@ pub enum NodeKind {
     File,
     Module,
     Struct,
+    /// A class: Python `class`, JS/TS `class`, Java/C++ `class`. Distinct from
+    /// `Struct` because a class is a nominal, inheritable container and the
+    /// renderer colours by kind (decision D1 in docs/NEXT-SESSION.md).
+    Class,
     Enum,
     EnumVariant,
     Trait,
@@ -33,7 +37,13 @@ pub enum NodeKind {
 pub enum Visibility {
     #[default]
     Private,
+    /// Visible to the enclosing package/crate/module.
     Crate,
+    /// Python's `_name` convention: private to the module, not the "crate"
+    /// (decision D2 in docs/NEXT-SESSION.md).
+    Module,
+    /// TS/Java/C++ `protected`.
+    Protected,
     Public,
 }
 
