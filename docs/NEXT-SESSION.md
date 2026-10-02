@@ -1,9 +1,109 @@
 # Next session — multi-language extraction
 
-*Session prep note, written against the current state of the repo: `codegraph
-enrich` produces a Rust-only snapshot (393 nodes / 2 252 edges) and
-`cargo test --workspace` is green (14 tests + 1 ignored); the two UI harnesses
-in `.cgtest/` pass at 236 and 44 assertions.*
+*Status note. This file began as a plan; **Phases 0–2 have since landed** — the
+seam exists (`profile.rs` + `walk.rs`, Rust as the first profile) and the CLI
+dispatches by extension. See "Status: Phases 0–2 landed" immediately below for
+what actually got built and the surprises worth knowing before Phase 3. Baseline
+after the refactor: `cargo test --workspace` = 16 passed / 1 ignored;
+`.cgtest/validate.mjs` = 44 assertions; `.cgtest/wiring.mjs` = 236 assertions.*
+
+## Status: Phases 0–2 landed
+
+The walker is language-agnostic now. Concretely:
+
+| File | Role |
+|------|------|
+| `crates/extract/src/walk.rs` | the whole walk: `Ctx`, `extract`, `walk_items`, `promoted_kind`, `handle_body`, `emit_def`, `extract_calls`, `emit_callsite`, `resolve_callee`, `unique_simple`, `add_edge`, `span_of`, `txt`. **No grammar kind strings.** |
+| `crates/extract/src/profile.rs` | the vocabulary (`ItemClass`, `BodyRole`, `DocAction`, `BindingCapture`, `CalleeShape`, `ImplInfo`, `LangProfile`), the registry (`PROFILES`, `all`, `for_lang`, `for_extension`) and `ProfileExtractor`. |
+| `crates/extract/src/rust.rs` | Rust *data*: `pub static RUST: LangProfile`, its helper fns, and all the tests (fixture unchanged). |
+| `crates/extract/src/text.rs` | `collapse_ws` / `first_paragraph` only — the Rust-specific `doc_line`/`signature_of` moved into the profile. |
+| `crates/cli/src/main.rs` | `collect_source_files` (extension → profile via `for_extension`) and `ProfileExtractor(profile)` per file; extended `SKIP_DIRS`. |
+
+Three places the sketch in "The profile" below is **wrong** — read these before Phase 3:
+
+1. **`RustExtractor` is kept**, as a unit struct delegating to
+   `walk::extract(&RUST, file)`, so every pre-existing test compiles and passes
+   untouched. It is a compatibility shim; new code should use
+   `ProfileExtractor(profile)` or `for_extension`.
+2. **A profile is richer than "classify + a few fns".** Classification alone
+   cannot do it: the walker also needs *what to do with a body* (`BodyRole` =
+   `None` / `Scope` / `Members(&[(&str, NodeKind)])` / `Calls`), *when a
+   `Function` becomes a `Method`* (`method_parents`), and a **three-way**
+   data-flow answer (`BindingCapture` — the `Leave` case matters: a `let` with a
+   call but no pattern must *not* reset the tracker). `CalleeShape` replaces the
+   kind-string `match` inside `resolve_callee`, and `mod_decl_name` covers
+   `mod foo;`. `doc_comment` returns `DocAction`, not `Option<String>`, because
+   a Rust attribute is *consumed* but must not break the doc block.
+3. **D1/D2 are already in the IR**: `NodeKind::Class` and
+   `Visibility::{Module, Protected}` now exist (purely additive — Rust output is
+   unchanged). `web/refactor/app/constants.js` gained `class`/`interface`
+   colours so the legend cannot lie.
+
+### Two surprises before you start
+
+- **The snapshot is not order-stable, so a byte-golden is impossible.**
+  `GraphStore` stores `HashMap<NodeId, Node>` / `HashMap<EdgeId, Edge>` and
+  `to_snapshot()` iterates `.values()`, so array order is randomised per
+  process: two runs of the *same* binary differ in order (content identical).
+  The Phase 1 exit criterion below — "the golden is byte-identical" — therefore
+  cannot hold as written. Compare goldens with
+  `node --experimental-default-type=module .cgtest/golden-cmp.mjs <a.json> <b.json>`,
+  which checks `file_count`, `stats` and the node/edge **sets**. Making
+  `to_snapshot()` sort its output is a real, separate task: it rewrites
+  `web/refactor/graph.json`, and `wiring.mjs` asserts **line numbers** inside
+  that file (the `RustExtractor` method-member assertions), so regenerate it
+  deliberately and re-run both harnesses.
+- **`queries/rust.scm` is dead weight.** Nothing in the crate loads or parses
+  it — there is no query-driven code path anywhere. The "profile-vs-query
+  consistency test" the plan proposes below would be asserting agreement with an
+  unused file. Either make the `.scm` actually drive `item_kinds`/`classify`
+  (real work) or delete it; do not write that test as-is.
+
+### The evidence that Phase 1 changed nothing
+
+`git worktree add <tmp> HEAD` (the pre-refactor tree), run the **new** binary
+over it (`cg-cli enrich . --output out.json`), and compare against the frozen
+pre-refactor golden with `golden-cmp.mjs`: identical `file_count` (21),
+identical `stats` (393 nodes / 2 252 edges / 268 calls / 1 711 contains / 10
+impls / 37 data-flow) and identical node and edge **sets**. That is the honest
+form of "byte-identical" this pipeline allows. The inline `rust.rs` tests remain
+the finer guard: exact census (27 nodes / 34 edges), 4 resolved calls, 8 call
+sites, data-flow annotations, and key stability across a body edit.
+
+### Adding a language — the procedure, as built
+
+1. `crates/extract/Cargo.toml`: add the pinned grammar
+   (`tree-sitter-python = "0.23"`).
+2. New `crates/extract/src/python.rs`: a `pub static PYTHON: LangProfile` whose
+   fields are small `fn`s (`classify`, `doc_comment`, `prev_doc`, `signature`,
+   `visibility`, `body_of`, `call_target`, `callee_shape`, `binding`,
+   `ident_name`), the tables (`item_kinds`, `simple_resolvable`,
+   `method_parents`, `call_kinds`, `path_root_strip`, `extensions`), and
+   `impl_info: None` / `mod_decl_name: None`.
+3. `crates/extract/src/lib.rs`: `mod python;` and re-export if wanted.
+4. `crates/extract/src/profile.rs`: add `&crate::python::PYTHON` to `PROFILES`.
+5. Tests in `python.rs` mirroring `rust.rs`'s (exact census, same-file calls,
+   data flow, key stability under a body edit).
+
+Steps 3–4 are the *only* shared edits, one line each. If a language needs a
+sixth hook, that is the signal `LangProfile` is missing a concept: add the hook
+to *every* profile and let the walker own the sequencing — never special-case a
+language inside `walk.rs`. The registry tests in `profile.rs`
+(`registry_resolves_rust_by_lang_and_extension`,
+`unregistered_languages_and_extensions_are_absent_not_panics`) pin that
+`for_extension`/`for_lang` return `None` rather than panicking for languages
+that are not registered yet.
+
+**Phase 3 prompt (copy-paste):**
+
+> Read `crates/extract/src/profile.rs`, `crates/extract/src/walk.rs` and
+> `crates/extract/src/rust.rs`. Then implement Phase 3 of
+> `docs/NEXT-SESSION.md` exactly as its "Adding a language — the procedure, as
+> built" section describes: add `tree-sitter-python`, write
+> `crates/extract/src/python.rs` with `PYTHON` as a `LangProfile` plus the
+> Python-only helpers, register it in `PROFILES`, and add fixture tests
+> mirroring `rust.rs`'s. Do **not** modify `walk.rs`; if you think you must,
+> stop and report which `LangProfile` hook is missing.
 
 ## Goal
 
@@ -19,7 +119,7 @@ grammar is a bounded amount of work.
 - [ ] `cargo run -p cg-cli -- enrich <dir>` walks `.rs`, `.py`, `.js` (and `.ts`/`.tsx` if Phase 4 lands) and dispatches to the right extractor by extension; unknown extensions are skipped with a warning.
 - [ ] A Python-only directory and a JavaScript-only directory each produce a snapshot whose nodes/edges satisfy the same invariants the Rust tests assert (defs registered, `contains` tree well-formed, same-file calls resolved, keys stable under body edits).
 - [ ] A **mixed** directory produces one snapshot where every node's `key.lang` matches its file's language, and no key collides across languages.
-- [ ] Every existing Rust test still passes **unchanged**, and the Rust snapshot for this repo is byte-identical to the one taken in Phase 0.
+- [ ] Every existing Rust test still passes **unchanged**, and the Rust snapshot for this repo is *content*-identical to the one taken in Phase 0 — compare with `.cgtest/golden-cmp.mjs`, because the snapshot's array order is randomised per process and `fc` fails even on two runs of the same binary (see "Two surprises before you start").
 - [ ] Both `.cgtest` harnesses still pass, and the viewer shows a per-node language (badge or filter) for a mixed snapshot (Phase 6 — can be deferred if the earlier phases overrun, but the snapshot must already carry the information).
 - [ ] README: a per-language coverage matrix (defs / imports / calls / visibility / docs / data flow), and `web/README.md` keeps matching reality.
 
@@ -118,65 +218,86 @@ A cheap extra win: a test that checks every node kind named in
 drift away from the code (or delete the `.scm` files deliberately — see
 Decisions).
 
+**Not taken, deliberately.** Nothing in the crate ever loads a `.scm`, so that
+test would assert agreement with text no code reads. The registry tests in
+`profile.rs` are the real guard. Leave the `.scm` as prose or delete it — but do
+not write the consistency test until something actually parses the file.
+
 ## Phase plan
 
-### Phase 0 — freeze current behaviour (~30 min)
+### Phase 0 — freeze current behaviour ✅ DONE
 
-- [ ] `cargo run -p cg-cli -- enrich . --output .cgtest/goldens/rust-repo.json` and commit it. Use `--output`, never shell redirection: on Windows `>` writes UTF-16 and the file stops being diffable.
-- [ ] `cargo test --workspace` → 14 passed, 1 ignored.
-- [ ] `node --experimental-default-type=module .cgtest/{validate,wiring}.mjs` → 44 / 236 assertions.
-- [ ] Record the `stats` block of `web/refactor/graph.json` too, since both UI harnesses read that file.
+- [x] Golden written with `cargo run -p cg-cli -- enrich . --output .cgtest/goldens/rust-repo.json`. Keep using `--output`, never shell redirection: on Windows `>` writes UTF-16 and the file stops being diffable.
+- [x] `cargo test --workspace` — 14 passed / 1 ignored before the refactor; **16 passed / 1 ignored now** (the two new registry tests in `profile.rs`).
+- [x] `node --experimental-default-type=module .cgtest/{validate,wiring}.mjs` → 44 / 236 assertions.
+- [x] `.cgtest/golden-cmp.mjs` added: an order-insensitive comparator. Note the criterion below is **not** achievable as a byte-diff — see "Two surprises before you start".
 
-Baseline `stats` for this repo: `total_nodes 393`, `total_edges 2252`,
-`function_count 119`, `struct_count 32`, `trait_count 2`, `impl_count 10`,
-`calls_edge_count 268`, `contains_edge_count 1711`, `impl_edge_count 10`,
-`data_flow_edge_count 37`.
+The frozen pre-refactor numbers are the regression reference. (The file on disk
+now holds the current tree, 23 files, because the extract crate gained
+`profile.rs` + `walk.rs`.) Pre-refactor: `file_count 21`, `total_nodes 393`,
+`total_edges 2252`, `function_count 119`, `struct_count 32`, `trait_count 2`,
+`impl_count 10`, `calls_edge_count 268`, `contains_edge_count 1711`,
+`impl_edge_count 10`, `data_flow_edge_count 37`.
 
-### Phase 1 — the profile seam, zero behaviour change (~2 h)
+### Phase 1 — the profile seam, zero behaviour change ✅ DONE
 
-- [ ] New `crates/extract/src/profile.rs` (the struct above) and
-      `crates/extract/src/walk.rs`. Move `walk_items`, `emit_def`, `extract_calls`,
-      `emit_callsite`, `resolve_callee`, `unique_simple`, `add_edge`, `span_of`
-      and `txt` out of `rust.rs` verbatim, replacing every hard-coded kind string
-      with a profile call.
-- [ ] `rust.rs` keeps only Rust data: the `RUST` profile (`classify`,
-      `visibility_of`, `signature_of`, `doc_line`/`prev_doc` adapters,
-      `flatten_use`, `base_type_name`, the resolution helpers).
-- [ ] `text.rs`: keep `collapse_ws`/`first_paragraph` (already generic); move the
-      Rust-specific `doc_line`/`signature_of` behind the profile.
-- [ ] `impl Extractor for ProfileExtractor` replaces
-      `impl Extractor for RustExtractor`; the `Lang::Rust` gate becomes
-      `profile.lang != file.lang`.
-- [ ] `lib.rs`: module list + re-exports
-      (`pub use profile::{all, for_extension, for_lang, ItemClass, LangProfile}`).
+- [x] `crates/extract/src/profile.rs` and `crates/extract/src/walk.rs` created.
+      Moved out of `rust.rs`: `walk_items`, `emit_def`, `extract_calls`,
+      `emit_callsite`, `resolve_callee`, `unique_simple`, `add_edge`, `span_of`,
+      `txt` — every hard-coded kind string replaced by a profile call. Two extra
+      seams came out of it: `promoted_kind` and `handle_body` (the walker owns
+      the sequencing; the profile only classifies).
+- [x] `rust.rs` keeps only Rust data: `RUST`, the kind tables
+      (`RUST_ITEM_KINDS`, `RUST_SIMPLE_RESOLVABLE`, `RUST_CALL_KINDS`,
+      `RUST_STRUCT_MEMBERS`, `RUST_ENUM_MEMBERS`), the helper fns
+      (`rust_classify`, `rust_doc_comment`, `rust_prev_doc`, `rust_signature`,
+      `rust_visibility`, `rust_body_of`, `rust_call_target`, `rust_callee_shape`,
+      `rust_binding`, `rust_imports`, `rust_impl_info`, `rust_mod_decl_name`,
+      `base_type_name`, `flatten_use`), and the tests.
+- [x] `text.rs`: `collapse_ws`/`first_paragraph` only — the Rust-specific
+      `doc_line`/`signature_of` now sit behind the profile.
+- [x] `impl Extractor` lives on `ProfileExtractor`; the `Lang::Rust` gate became
+      `profile.lang != file.lang`. `RustExtractor` is kept as a delegating shim
+      so the pre-existing tests compile unchanged.
+- [x] `lib.rs`: `mod profile; mod walk;` plus re-exports
+      (`pub use profile::{all, for_extension, for_lang, BindingCapture, BodyRole,
+      CalleeShape, DocAction, ImplInfo, ItemClass, LangProfile, ProfileExtractor}`).
 
-Exit criterion: the Phase 0 golden is **byte-identical** (`fc` / `git diff`
-the two JSON files), `cargo test --workspace` untouched and green.
+Exit criterion, as amended: the golden was **not** byte-identical — the snapshot
+is order-unstable (see "Two surprises"). It was proven equal instead by
+`golden-cmp.mjs` against the pre-refactor tree in a `git worktree`: identical
+`file_count`, identical `stats`, identical node and edge sets.
+`cargo test --workspace` green.
 
-### Phase 2 — file discovery and dispatch in the CLI (~1 h)
+### Phase 2 — file discovery and dispatch in the CLI ✅ DONE
 
-- [ ] `cli/src/main.rs:141-173`: `collect_rs_files` → `collect_source_files(dir)
-      -> Vec<(PathBuf, Lang, String)>`, driven by `profile::for_extension`.
-- [ ] `run_snapshot` / `run_enrich` (`main.rs:177-247`): drop the hard-coded
-      `Lang::Rust`; take each file's language from the walk and pick its
-      extractor with `cg_extract::for_lang`.
-- [ ] Keep the directory skip-list (`target`, `node_modules`, `vendor`,
-      dot-dirs) and add the usual Python/JS noise (`__pycache__`, `.venv`,
-      `venv`, `dist`, `build`, `coverage`) — a Python repo walk without them is
-      unusable.
-- [ ] Optional: a `--langs rs,py,js` filter, plus per-language counts in the
-      summary line that `write_json` prints.
-- [ ] While here: either add `--web <dir>` or document clearly that the refactor
-      viewer is fed with `--output` (only `--demo` targets `web/demo/` today).
+- [x] `collect_rs_files` → `collect_source_files`, returning
+      `(PathBuf, &'static LangProfile, String)` and driven by
+      `cg_extract::for_extension` — the extension → profile mapping lives in the
+      profile, not in the CLI.
+- [x] `run_snapshot` / `run_enrich`: no hard-coded `Lang::Rust` left; both build
+      `cg_extract::ProfileExtractor(profile)` per file.
+- [x] `SKIP_DIRS` extended with `target`, `node_modules`, `vendor`, `dist`,
+      `build`, `coverage`, `__pycache__`, `.venv`, `venv` (the dot-dir skip was
+      already there), so a Python/JS checkout can be walked at all.
+- [ ] **Still open here**: a `--langs rs,py,js` filter and per-language counts in
+      the summary line; and `--web <dir>` (today only `--demo` targets
+      `web/demo/`, everything else goes through `--output`).
 
-Exit criterion: one snapshot over a mixed directory with no `LangMismatch`, and
-the Rust-only snapshot still equal to the Phase 0 golden.
+Exit criterion, as achieved: the Rust snapshot is still equal to the Phase 0
+golden (order-insensitive — see above) and the CLI has no language-specific
+branch left. The "mixed directory" half of the criterion needs a second profile
+to exist, so it moves to Phase 3.
 
 ### Phase 3 — Python (~half a day)
 
+> **Start from "Adding a language — the procedure, as built" at the top of this
+> file**, not from this list: it reflects what the seam actually looks like now
+> (and skips the `.scm` step below).
+
 - [ ] `crates/extract/Cargo.toml`: add `tree-sitter-python = "0.23"` (pin it; kind names drift between grammar releases — the same note already sits next to `tree-sitter-rust` in the workspace manifest).
 - [ ] `crates/extract/src/python.rs`: `pub static PYTHON: LangProfile` plus the Python-only helpers (`docstring`, `visibility_from_name`, `flatten_import`, `decorators`). See **Python specifics** below for the kinds.
-- [ ] `queries/python.scm` mirroring `queries/rust.scm`, and wire it into the profile-vs-query test (Phase 1).
+- [x] ~~`queries/python.scm` mirroring `queries/rust.scm`, and wire it into the profile-vs-query test (Phase 1)~~ — **dropped**: nothing loads the `.scm` (see D4), so register in `PROFILES` instead and write no query file.
 - [ ] Tests in `python.rs` following the existing convention: an inline
       `const FIXTURE: &str = r#"..."#;` next to a `#[cfg(test)] mod tests`,
       asserting the def keys, the `contains` tree, same-file call resolution
@@ -259,7 +380,7 @@ extractor — a late change here means re-keying every snapshot.
 | D1 | Class-like definitions | (a) reuse `NodeKind::Struct`, (b) add `NodeKind::Class` | **(b)** — a Python `class` is not a Rust `struct`, and the viewer colours by kind; `NodeKind` is serde `snake_case`, so this is one variant plus `snapshot.rs` stats plus `KIND_COLORS`/`KIND_ORDER` |
 | D2 | Visibility vocabulary | (a) keep `private`/`crate`/`public`, (b) add `module` + `protected` | **(b)**: Python's `_name` is module-private (not `crate`), TS/Java `protected` has no home today. Existing Rust output is unchanged (`pub`→`public`, `pub(crate)`→`crate`) |
 | D3 | Qualified-name separator | (a) always `::`, (b) per-language (`::` Rust, `.` Python/JS) | **(b)**, carried by `profile.qual_sep`, because the separator is also what the enrichers split on. Keys stay unambiguous either way — `NodeKey::Symbol.lang` disambiguates |
-| D4 | `queries/*.scm` | (a) keep as documentation + profile-consistency test, (b) delete, (c) make them the real driver | **(a)** — cheap, and it stops the "the README claims a query-driven path" lie from recurring |
+| D4 | `queries/*.scm` | (a) keep as documentation + profile-consistency test, (b) delete, (c) make them the real driver | **Resolved in practice — none of the three was needed.** Nothing loads the file, so option (a)'s consistency test would assert against dead text; the README already calls it documentation-not-a-driver, and the `profile.rs` registry tests are the real guard. Either delete the `.scm` or leave it unread; never build on it |
 | D5 | Python nesting in `qualified_name` | (a) `Outer::inner` as Rust does, (b) `Outer.inner` including the class | **(b)**: use the module path for module-level defs (`app.models.Thing.save`) or the enclosing scope for nested ones, and assert it in the fixture test so it stops being accidental |
 | D6 | Arrow functions / function-valued constants | (a) skip, (b) definition of the variable, (c) definition of the arrow | **(b)** — what a reader looks for; key on the variable name |
 | D7 | `Lang::Tsx` vs `Ts` | — | No `Lang::Ts` variant exists; either add one or map `.ts` to `Lang::TypeScript` and `.tsx` to `Lang::Tsx` (cheapest, recommended) |
@@ -320,7 +441,11 @@ short enough to put in the README:
 2. Write `crates/extract/src/<lang>.rs`: one `static PROFILE: LangProfile`, plus
    `doc`/`prev_doc`/`signature`/`visibility`/`imports`. `classify()` is a
    `match` over the grammar's item kinds — nothing else.
-3. Add `queries/<lang>.scm` and register the profile in `profile::all()`.
+3. Register the profile in `PROFILES` (`crates/extract/src/profile.rs`, one
+   line: `&crate::python::PYTHON`). **Skip `queries/<lang>.scm`** — nothing
+   loads those files (see "Two surprises before you start"), so an unread `.scm`
+   is documentation that lies. `PROFILES` is `pub static PROFILES: &[&LangProfile]`
+   with `all()` / `for_lang()` / `for_extension()` on top.
 4. Add an inline-fixture test (defs, contains tree, attrs, one resolved and one
    unresolved call, key stability under a body edit) and, if the language has
    anything unusual, one test per quirk.
@@ -347,17 +472,18 @@ each):
 
 Acceptance for "all tree-sitter languages in general" is therefore not a list of
 languages but the property: **adding one touches no shared file except
-`profile::all()` and the Cargo manifest.**
+`PROFILES` in `profile.rs` and the Cargo manifest.**
 
 ## Verification (copy-paste)
 
 ```powershell
-# Rust side — must stay at 14 passed / 1 ignored through phases 1-2
+# Rust side — 16 passed / 1 ignored after the refactor
 cargo test --workspace
 
-# Golden behaviour check: byte-compare against the Phase 0 snapshot
+# Golden behaviour check: ORDER-INSENSITIVE, never `fc` (the snapshot order is
+# randomised per process — see "Two surprises before you start")
 cargo run -p cg-cli -- enrich . --output .cgtest/goldens/rust-repo-after.json
-fc.exe .cgtest/goldens/rust-repo.json .cgtest/goldens/rust-repo-after.json
+node --experimental-default-type=module .cgtest/golden-cmp.mjs .cgtest/goldens/rust-repo.json .cgtest/goldens/rust-repo-after.json
 
 # New languages: enrich a mixed fixture tree and inspect the shape
 cargo run -p cg-cli -- enrich .\crates\extract\tests\fixtures --output .\out\mixed.json
@@ -393,13 +519,28 @@ Checks specific to multi-language output, all expressible as tests:
 | Phase 1 turns into a rewrite | freeze first (Phase 0) and diff JSON, not intuition: the golden file is the only judge of "no behaviour change" |
 | Python data flow silently produces nothing | assert one `flows_from` annotation in the Python fixture (`x = f(); g(x)`), not just "no crash" |
 
-## Session order (suggested)
+## Session order (as executed)
 
-1. Phase 0 + the D1–D7 decisions (write them down in this file, as decided).
-2. Phase 1, then stop and re-run the golden + both harnesses. Do not start Phase 3 with a red Phase 1.
-3. Phase 2 (small), then Phase 3 (Python) end-to-end including tests.
-4. Phase 4 (JavaScript) only if Phase 3's "no shared file touched" claim held; otherwise fix the profile first.
-5. Phase 5 (enrichers) and Phase 6 (viewer + docs) — the last two are the ones that make the result *usable* rather than merely extracted.
+1. ~~Phase 0~~ — done. D1 (`NodeKind::Class`) and D2
+   (`Visibility::{Module, Protected}`) **landed additively** in the IR; D3–D7
+   remain open because they are questions only the language that needs them can
+   answer (Python indentation, JS arrow functions, the qualified-name separator).
+2. ~~Phase 1~~ — done, with the behaviour proof against a pre-refactor
+   `git worktree` ("The evidence that Phase 1 changed nothing").
+3. ~~Phase 2~~ — done.
+4. **Next: Phase 3 (Python)**, following "Adding a language — the procedure, as
+   built": grammar crate → `python.rs` profile → one line in `PROFILES` → tests.
+   This is the first real test of the seam. If a Python profile forces an edit to
+   `walk.rs`, **stop and fix the abstraction**, do not special-case the language.
+5. Phase 4 (JavaScript) only if Phase 3's "no shared file touched" claim held.
+6. Phase 5 (enrichers) and Phase 6 (viewer + docs) last — they are what make the
+   result *usable* rather than merely extracted.
+
+Before starting Phase 3, all four of these must be green (they are, at the time
+of writing): `cargo test --workspace` (16 passed / 1 ignored),
+`node --experimental-default-type=module .cgtest/validate.mjs` (44),
+`node --experimental-default-type=module .cgtest/wiring.mjs` (236), and
+`cargo run -q -p cg-cli -- enrich .` end-to-end.
 
 If the session runs short, the best stopping point is "Phase 3 green with Python
 fully wired, JavaScript profile written but a known-unfinished note in the

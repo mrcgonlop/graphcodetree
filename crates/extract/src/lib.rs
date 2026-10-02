@@ -19,10 +19,25 @@
 //! the call site, not materialized as a node the resolver would later have
 //! to re-key.
 
+//! The extractor crate is a shared, language-agnostic walker (`walk`) driven
+//! by per-language profiles (`profile`). Adding a language is a new profile
+//! module plus one line in `profile::PROFILES`; the walker, the store and the
+//! enrichers never change.
+//!
+//! Deliberately *no* external stub nodes: an unresolved name is recorded on
+//! the call site, not materialized as a node the resolver would later have
+//! to re-key.
+
+mod profile;
 mod rust;
 mod snapshot;
 mod text;
+mod walk;
 
+pub use profile::{
+    all, for_extension, for_lang, BindingCapture, BodyRole, CalleeShape, DocAction, ImplInfo,
+    ItemClass, LangProfile, ProfileExtractor,
+};
 pub use rust::RustExtractor;
 pub use snapshot::flatten;
 

@@ -26,8 +26,10 @@ use std::io::Write;
 use std::path::PathBuf;
 
 use clap::Parser;
-use cg_extract::{diff, Extractor, FileGraph, RustExtractor, SourceFile};
-use cg_ir::{Lang, Snapshot};
+use cg_extract::{
+    diff, for_extension, Extractor, FileGraph, LangProfile, ProfileExtractor, SourceFile,
+};
+use cg_ir::Snapshot;
 use walkdir::WalkDir;
 
 // ─── CLI Definition ───────────────────────────────────────────────────────────
@@ -35,10 +37,10 @@ use walkdir::WalkDir;
 #[derive(Parser)]
 #[command(name = "codegraph", about = "Code graph toolchain")]
 enum Cli {
-    /// Extract a flat, one-shot snapshot of a Rust codebase (extract-only,
-    /// no store, no enrichment).
+    /// Extract a flat, one-shot snapshot of a codebase (extract-only, no
+    /// store, no enrichment).
     Snapshot {
-        /// Directory to scan for `.rs` files (default: current dir).
+        /// Directory to scan (default: current dir).
         #[arg(default_value = ".")]
         dir: PathBuf,
 
@@ -49,11 +51,12 @@ enum Cli {
 
     /// Run the full pipeline: extract → store → enrich → snapshot.
     ///
-    /// Walks a directory, extracts every `.rs` file, ingests into an in-memory
-    /// graph store, runs the enrichment pipeline (import resolution, call graph,
-    /// impl-trait links), and exports the enriched snapshot as JSON.
+    /// Walks a directory, extracts every recognised source file (language
+    /// chosen by extension — see `cg_extract::for_extension`), ingests into an
+    /// in-memory graph store, runs the enrichment pipeline (import resolution,
+    /// call graph, impl-trait links), and exports the enriched snapshot.
     Enrich {
-        /// Directory to scan for `.rs` files (default: current dir).
+        /// Directory to scan (default: current dir).
         #[arg(default_value = ".")]
         dir: PathBuf,
 
@@ -137,8 +140,28 @@ fn write_json(_cmd: &str, output: Option<PathBuf>, snapshot: &Snapshot) {
     );
 }
 
-/// Collect all `.rs` files under `dir` (reused by both commands).
-fn collect_rs_files(dir: &PathBuf) -> Vec<(PathBuf, String)> {
+/// Directory names never worth walking: VCS noise, build output and vendored
+/// deps. `target`/`node_modules`/`vendor` predate language support; the rest
+/// are the usual Python/JS noise that would otherwise drown a mixed-repo walk.
+const SKIP_DIRS: &[&str] = &[
+    "target",
+    "node_modules",
+    "vendor",
+    "dist",
+    "build",
+    "coverage",
+    "__pycache__",
+    ".venv",
+    "venv",
+];
+
+/// Collect every source file under `dir` whose extension a language profile
+/// recognises, paired with that file's profile (reused by both commands).
+///
+/// The language of a file comes from its extension via
+/// [`cg_extract::for_extension`], so adding a language to the registry is all
+/// it takes for the CLI to walk it.
+fn collect_source_files(dir: &PathBuf) -> Vec<(PathBuf, &'static LangProfile, String)> {
     let mut files = Vec::new();
     for entry in WalkDir::new(dir)
         .into_iter()
@@ -148,25 +171,25 @@ fn collect_rs_files(dir: &PathBuf) -> Vec<(PathBuf, String)> {
             }
             if e.file_type().is_dir() {
                 let name = e.file_name().to_string_lossy();
-                return !(name.starts_with('.')
-                    || name == "target"
-                    || name == "node_modules"
-                    || name == "vendor");
+                return !(name.starts_with('.') || SKIP_DIRS.contains(&name.as_ref()));
             }
             true
         })
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        if path.extension().map(|ext| ext == "rs").unwrap_or(false) {
-            let text = std::fs::read_to_string(path)
-                .unwrap_or_else(|e| {
-                    eprintln!("warning: read {}: {e}", path.display());
-                    String::new()
-                });
-            if !text.is_empty() {
-                files.push((path.to_path_buf(), text));
-            }
+        let Some(ext) = path.extension().and_then(|e| e.to_str()) else {
+            continue;
+        };
+        let Some(profile) = for_extension(ext) else {
+            continue;
+        };
+        let text = std::fs::read_to_string(path).unwrap_or_else(|e| {
+            eprintln!("warning: read {}: {e}", path.display());
+            String::new()
+        });
+        if !text.is_empty() {
+            files.push((path.to_path_buf(), profile, text));
         }
     }
     files
@@ -175,16 +198,15 @@ fn collect_rs_files(dir: &PathBuf) -> Vec<(PathBuf, String)> {
 // ─── Snapshot (old pipeline) ──────────────────────────────────────────────────
 
 fn run_snapshot(dir: &PathBuf) -> Result<Snapshot, Box<dyn std::error::Error>> {
-    let extractor = RustExtractor;
     let mut graphs = Vec::new();
 
-    for (path, text) in collect_rs_files(dir) {
+    for (path, profile, text) in collect_source_files(dir) {
         let file = SourceFile {
             path,
-            lang: Lang::Rust,
+            lang: profile.lang,
             text,
         };
-        let fg = extractor.extract(&file)?;
+        let fg = ProfileExtractor(profile).extract(&file)?;
         graphs.push(fg);
     }
 
@@ -196,20 +218,19 @@ fn run_snapshot(dir: &PathBuf) -> Result<Snapshot, Box<dyn std::error::Error>> {
 fn run_enrich(dir: &PathBuf) -> Result<Snapshot, Box<dyn std::error::Error>> {
     use cg_store::GraphStore;
 
-    let extractor = RustExtractor;
     let mut store = GraphStore::new();
     let mut version: u64 = 0;
     let mut file_count: usize = 0;
 
     // Phase 1: extract + ingest every file
-    for (path, text) in collect_rs_files(dir) {
+    for (path, profile, text) in collect_source_files(dir) {
         file_count += 1;
         let file = SourceFile {
             path: path.clone(),
-            lang: Lang::Rust,
+            lang: profile.lang,
             text,
         };
-        let fg = extractor.extract(&file)?;
+        let fg = ProfileExtractor(profile).extract(&file)?;
 
         // Convert the full FileGraph to KeyOps via diff(empty, fg).
         let ops = diff(&FileGraph::empty(&fg.file, fg.lang), &fg);

@@ -124,7 +124,7 @@ The project carries a tree-sitter query file (`queries/rust.scm`) that declares 
 (use_declaration) @import
 ```
 
-The file is **documentation, not a driver**: extraction today is the direct AST walk in `crates/extract/src/rust.rs`, and nothing loads the `.scm`. It is kept as the declared vocabulary for the per-language profiles — see [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md), which makes the profile and the query file agree by test.
+The file is **documentation, not a driver**: extraction today is the shared AST walk in `crates/extract/src/walk.rs`, driven by the Rust profile in `crates/extract/src/rust.rs`, and nothing loads the `.scm`. It is kept as the declared vocabulary for the per-language profiles; the profiles themselves are the source of truth — see [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md).
 
 ## Planned Languages
 
@@ -190,20 +190,20 @@ single-file viewer, kept for reference.
 
 ## Next Session — multi-language extraction
 
-The next session's goal is to stop being Rust-shaped: extraction becomes
-*language-parameterised*, with **Python** and **JavaScript** as the two
-languages that prove it, and every other tree-sitter grammar reduced to a
-bounded addition:
+Extraction is no longer Rust-shaped: it is *language-parameterised*, and every
+tree-sitter grammar is meant to be a bounded addition:
 
-- one shared walker (`walk.rs`) with no grammar kind strings in it, plus a
-  `LangProfile` per language carrying its grammar, item kinds, doc/signature
-  rules, visibility rule, import flattener and qualified-name separator;
-- CLI dispatch by file extension (`collect_rs_files` → `collect_source_files`),
-  so one snapshot can hold several languages;
-- the enrichers lose their `crate::` / `mod.rs` / `ImplBlock` assumptions;
-- the web view gains a language badge and filter;
+- **done** — one shared walker (`crates/extract/src/walk.rs`) with no grammar
+  kind strings in it, plus a `LangProfile` per language carrying its grammar,
+  item kinds, doc/signature rules, visibility rule, import flattener and
+  qualified-name separator (`crates/extract/src/profile.rs`; Rust is
+  `crates/extract/src/rust.rs`);
+- **done** — CLI dispatch by file extension (`collect_source_files` +
+  `profile::for_extension`), so one snapshot can hold several languages;
+- **next** — the enrichers lose their `crate::` / `mod.rs` / `ImplBlock`
+  assumptions, and the web view gains a language badge and filter;
 - acceptance is a property, not a list: *adding a language touches no shared file
-  except the profile registry and the Cargo manifest.*
+  except `PROFILES` in `profile.rs` and the Cargo manifest.*
 
 Full plan, phase-by-phase checklists, the Rust-specific code inventory (with
 file:line anchors), Python/JavaScript node-kind tables, the decisions to settle
@@ -211,9 +211,11 @@ first (new `NodeKind::Class`, new `Visibility` variants, the qualified-name
 separator, the fate of `queries/*.scm`), the verification commands and the risk
 table: **[docs/NEXT-SESSION.md](docs/NEXT-SESSION.md)**.
 
-Baseline to protect while doing it: `cargo test --workspace` = 14 passed /
+Baseline to protect while doing it: `cargo test --workspace` = 16 passed /
 1 ignored, `.cgtest/validate.mjs` = 44 assertions, `.cgtest/wiring.mjs` =
-236 assertions, and this repo's snapshot = 393 nodes / 2 252 edges.
+236 assertions, and the pre-refactor snapshot of this repo = 393 nodes /
+2 252 edges over 21 files (compare **content**, not bytes: the snapshot's array
+order is randomised per process — use `.cgtest/golden-cmp.mjs`).
 
 ## Backlog (still open)
 

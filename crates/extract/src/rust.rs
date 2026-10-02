@@ -1,34 +1,39 @@
-//! Rust structure extraction via a direct tree walk.
+//! The Rust language profile.
 //!
-//! The four-way classifier from the IR design, as a match over
-//! tree-sitter-rust kinds:
-//!   Definition:  function_item, struct_item, trait_item, impl_item, ...
-//!   Reference:   call_expression, macro_invocation (→ CallSite + Calls)
-//!   Container:   mod_item / declaration_list bodies (recurse, new scope)
-//!   Transparent: everything else falls through — no nodes, never wrong ones.
+//! This file is Rust *data*: the mapping from tree-sitter-rust kinds to the
+//! shared walker's vocabulary ([`LangProfile`]), plus the handful of helpers
+//! only Rust needs. The walk itself lives in [`crate::walk`] and holds no
+//! grammar kind strings — adding Python is a sibling of this file, not an
+//! edit to it.
 //!
-//! Two-pass: `walk_items` registers defs and queues body jobs; pass two
-//! resolves call sites against the fully-registered def tables, so forward
-//! references work. Resolution is syntactic and same-file only:
+//! The four-way classifier from the IR design, as a `kind -> ItemClass` map:
+//!   Def:         function_item, struct_item, trait_item, const_item, ...
+//!   Impl:        impl_item (type/trait fields → `impl_trait`, Defines edges)
+//!   Import:      use_declaration (→ FileGraph.imports, no node)
+//!   Transparent: everything else — no nodes, never wrong ones.
+//!
+//! Resolution is syntactic and same-file only (see `walk::resolve_callee`):
 //!   foo()            → unique same-file def            ("same_file")
 //!   Thing::new()     → same-file qualified match       ("same_file")
 //!   self.helper()    → method on enclosing impl type   ("self_method")
-//!   imported_name()  → recorded with `via_import` hint ("imported")
+//!   imported_name()  → recorded with a path hint       ("imported")
 //!   x.method()       → needs types → cg-resolve        ("method_unresolved")
 //!   crate::a::b()    → needs crate index → cg-resolve  ("path_unresolved")
 
-use crate::text::{collapse_ws, doc_line, first_paragraph, signature_of};
-use crate::{
-    ExtractError, Extractor, FileGraph, SourceFile,
-};
-use cg_ir::{
-    EdgeKind, EdgeKey, EdgeSpec, ImportRecord, Lang, ModDecl, NodeAttrs, NodeKey, NodeKind, NodeSpec,
-    Point, Span, Visibility,
-};
-use std::collections::{BTreeMap, HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use cg_ir::{ImportRecord, Lang, NodeKind, Visibility};
 use tree_sitter::Node;
 
+use crate::profile::{
+    BindingCapture, BodyRole, CalleeShape, DocAction, ImplInfo, ItemClass, LangProfile,
+};
+use crate::text::{collapse_ws, first_paragraph};
+use crate::walk::{dummy_span, txt};
+use crate::{ExtractError, Extractor, FileGraph, SourceFile};
+
+/// A thin handle for today's callers and tests: the Rust profile behind the
+/// [`Extractor`] trait. Kept as a unit struct so existing code compiles
+/// unchanged; new code should prefer `ProfileExtractor(&RUST)` or
+/// [`crate::for_extension`].
 pub struct RustExtractor;
 
 impl Extractor for RustExtractor {
@@ -37,600 +42,314 @@ impl Extractor for RustExtractor {
     }
 
     fn extract(&self, file: &SourceFile) -> Result<FileGraph, ExtractError> {
-        if file.lang != Lang::Rust {
-            return Err(ExtractError::LangMismatch);
-        }
-        let language: tree_sitter::Language = tree_sitter_rust::LANGUAGE.into();
-        let mut parser = tree_sitter::Parser::new();
-        parser.set_language(&language).map_err(|_| ExtractError::LanguageInit)?;
-        let tree = parser.parse(&file.text, None).ok_or(ExtractError::ParseFailed)?;
-
-        let file_key = NodeKey::Symbol {
-            lang: Lang::Rust,
-            file: file.path.clone(),
-            qualified_name: String::new(),
-            kind: NodeKind::File,
-            disambiguator: 0,
-        };
-        let mut graph = FileGraph::new(&file.path, Lang::Rust, crate::hash_text(&file.text));
-        graph.nodes.insert(
-            file_key.clone(),
-            NodeSpec {
-                kind: NodeKind::File,
-                label: file
-                    .path
-                    .file_name()
-                    .map(|s| s.to_string_lossy().into_owned())
-                    .unwrap_or_default(),
-                ast_kind: "source_file".into(),
-                span: Some(span_of(&file.path, tree.root_node())),
-                is_definition: false,
-                attrs: NodeAttrs::default(),
-            },
-        );
-
-        let mut ctx = Ctx {
-            src: file.text.as_bytes(),
-            file: file.path.clone(),
-            graph,
-            used: HashSet::from([file_key.clone()]),
-            defs_simple: HashMap::new(),
-            defs_qualified: HashMap::new(),
-            simple_imports: HashMap::new(),
-            call_jobs: Vec::new(),
-            defines_jobs: Vec::new(),
-        };
-
-        walk_items(&mut ctx, tree.root_node(), &mut Vec::new(), &file_key, 0);
-
-        // Pass 2: everything is registered now; forward references resolve.
-        for (body, ancestor, scope) in std::mem::take(&mut ctx.call_jobs) {
-            extract_calls(&mut ctx, body, &ancestor, &scope);
-        }
-        for (ty, members) in std::mem::take(&mut ctx.defines_jobs) {
-            // Namespace fact: Type—Defines→member (syntactic counterpart of
-            // Contains, which is ImplBlock—Contains→member).
-            if let Some(target) = unique_simple(&ctx, &ty) {
-                for m in members {
-                    add_edge(&mut ctx, EdgeKind::Defines, target.clone(), m, None);
-                }
-            }
-        }
-        Ok(ctx.graph)
+        crate::walk::extract(&RUST, file)
     }
 }
 
-struct Ctx<'a, 't> {
-    src: &'a [u8],
-    file: PathBuf,
-    graph: FileGraph,
-    used: HashSet<NodeKey>,
-    /// simple name → all defs with that name (resolve only if unique)
-    defs_simple: HashMap<String, Vec<NodeKey>>,
-    /// "inner::Thing::new" → key; drives scoped-path and self-method lookup
-    defs_qualified: HashMap<String, NodeKey>,
-    /// imported simple name → full use path (resolver hint)
-    simple_imports: HashMap<String, String>,
-    call_jobs: Vec<(Node<'t>, NodeKey, Vec<String>)>,
-    defines_jobs: Vec<(String, Vec<NodeKey>)>,
+/// The Rust language profile.
+pub static RUST: LangProfile = LangProfile {
+    lang: Lang::Rust,
+    extensions: &["rs"],
+    grammar: rust_grammar,
+    root_ast_kind: "source_file",
+    name_field: "name",
+    qual_sep: "::",
+
+    classify: rust_classify,
+    doc_comment: rust_doc_comment,
+    prev_doc: rust_prev_doc,
+    signature: rust_signature,
+    visibility: rust_visibility,
+    body_of: rust_body_of,
+    item_kinds: RUST_ITEM_KINDS,
+    simple_resolvable: RUST_SIMPLE_RESOLVABLE,
+    method_parents: &[NodeKind::ImplBlock, NodeKind::Trait],
+
+    call_kinds: RUST_CALL_KINDS,
+    call_target: rust_call_target,
+    args_field: "arguments",
+    callee_shape: rust_callee_shape,
+    path_root_strip: &["self"],
+    self_receiver: Some("self"),
+    binding: rust_binding,
+    ident_name: extract_identifier_name,
+    imports: rust_imports,
+
+    impl_info: Some(rust_impl_info),
+    mod_decl_name: Some(rust_mod_decl_name),
+};
+
+fn rust_grammar() -> tree_sitter::Language {
+    tree_sitter_rust::LANGUAGE.into()
 }
 
-/// Walks one item container, emitting defs + Contains edges and queueing
-/// body jobs. Returns direct definitional children (impl wires them into
-/// Type—Defines→member edges).
-fn walk_items<'a>(
-    ctx: &mut Ctx<'a, 'a>,
-    container: Node<'a>,
-    scope: &mut Vec<String>,
-    parent: &NodeKey,
-    depth: u32,
-) -> Vec<NodeKey> {
-    let mut emitted = Vec::new();
-    let mut pending_docs: Vec<String> = Vec::new();
-    let mut cursor = container.walk();
+// --- kind tables (the only place these strings live) ----------------------
 
-    for child in container.named_children(&mut cursor) {
-        match child.kind() {
-            "line_comment" => {
-                if let Some(l) = doc_line(txt(&child, ctx.src)) {
-                    pending_docs.push(l);
-                }
-                continue;
-            }
-            // attributes belong to the next item; don't reset pending docs
-            "attribute_item" | "block_comment" => continue,
-            _ => {}
+/// Kinds skipped inside a body's call walk: their own calls belong to them.
+/// Nested *items* in fn bodies are a known v1 gap — rare in practice.
+static RUST_ITEM_KINDS: &[&str] = &[
+    "mod_item",
+    "function_item",
+    "function_signature_item",
+    "struct_item",
+    "union_item",
+    "enum_item",
+    "trait_item",
+    "impl_item",
+    "use_declaration",
+    "const_item",
+    "static_item",
+    "type_item",
+    "associated_type",
+    "macro_definition",
+];
+
+/// Definition kinds that participate in same-file simple-name resolution.
+static RUST_SIMPLE_RESOLVABLE: &[NodeKind] = &[
+    NodeKind::Function,
+    NodeKind::Struct,
+    NodeKind::Enum,
+    NodeKind::Trait,
+    NodeKind::Constant,
+    NodeKind::Static,
+    NodeKind::TypeAlias,
+    NodeKind::Macro,
+    NodeKind::Module,
+];
+
+/// Call-site and callee kinds.
+static RUST_CALL_KINDS: &[&str] = &["call_expression", "macro_invocation"];
+
+/// Struct/union bodies: `field_declaration` children become `Field`s.
+static RUST_STRUCT_MEMBERS: &[(&str, NodeKind)] = &[("field_declaration", NodeKind::Field)];
+
+/// Enum bodies: `enum_variant` children become `EnumVariant`s.
+static RUST_ENUM_MEMBERS: &[(&str, NodeKind)] = &[("enum_variant", NodeKind::EnumVariant)];
+
+// --- classify -------------------------------------------------------------
+
+fn rust_classify(kind: &str) -> ItemClass {
+    use ItemClass::{Def, Impl, Import, Transparent};
+    match kind {
+        "mod_item" => Def { kind: NodeKind::Module, body: BodyRole::Scope },
+        "function_item" | "function_signature_item" => {
+            Def { kind: NodeKind::Function, body: BodyRole::Calls }
         }
-        let doc = first_paragraph(&pending_docs);
-        pending_docs.clear();
+        "struct_item" | "union_item" => Def {
+            kind: NodeKind::Struct,
+            body: BodyRole::Members(RUST_STRUCT_MEMBERS),
+        },
+        "enum_item" => Def { kind: NodeKind::Enum, body: BodyRole::Members(RUST_ENUM_MEMBERS) },
+        "trait_item" => Def { kind: NodeKind::Trait, body: BodyRole::Scope },
+        "impl_item" => Impl,
+        "use_declaration" => Import,
+        "const_item" => Def { kind: NodeKind::Constant, body: BodyRole::Calls },
+        "static_item" => Def { kind: NodeKind::Static, body: BodyRole::Calls },
+        "type_item" | "associated_type" => Def { kind: NodeKind::TypeAlias, body: BodyRole::None },
+        "macro_definition" => Def { kind: NodeKind::Macro, body: BodyRole::None },
+        _ => Transparent,
+    }
+}
 
-        match child.kind() {
-            "mod_item" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Module, &name, doc, depth);
-                emitted.push(key.clone());
-                match child.child_by_field_name("body") {
-                    Some(body) => {
-                        scope.push(name);
-                        walk_items(ctx, body, scope, &key, depth + 1);
-                        scope.pop();
-                    }
-                    None => {
-                        // `mod foo;` — contents live in a sibling file; cg-resolve joins them.
-                        ctx.graph.mod_decls.push(ModDecl {
-                            name,
-                            span: span_of(&ctx.file, child),
-                        });
-                        if let Some(n) = ctx.graph.nodes.get_mut(&key) {
-                            n.attrs.extra.insert("external_file".into(), true.into());
-                        }
-                    }
-                }
+// --- documentation, signatures, visibility --------------------------------
+
+/// `///` lines accumulate; attributes and block comments are consumed but
+/// leave the buffer alone (they annotate, they do not document).
+fn rust_doc_comment(n: Node, src: &[u8]) -> DocAction {
+    match n.kind() {
+        "line_comment" => DocAction::Comment(doc_line(txt(&n, src))),
+        "attribute_item" | "block_comment" => DocAction::Comment(None),
+        _ => DocAction::NotComment,
+    }
+}
+
+/// "/// foo" → Some("foo"). "////" and "//" are not doc comments.
+fn doc_line(comment: &str) -> Option<String> {
+    if comment.starts_with("////") {
+        return None;
+    }
+    let body = comment.strip_prefix("///")?;
+    Some(body.strip_prefix(' ').unwrap_or(body).to_string())
+}
+
+/// Contiguous `///` block above a sibling (fields, variants).
+fn rust_prev_doc(n: Node, src: &[u8]) -> Option<String> {
+    let mut lines = Vec::new();
+    let mut cur = n;
+    while let Some(p) = cur.prev_named_sibling() {
+        match doc_line(txt(&p, src)) {
+            Some(l) if p.kind() == "line_comment" => {
+                lines.push(l);
+                cur = p;
             }
-            "function_item" | "function_signature_item" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let parent_kind = ctx.graph.nodes.get(parent).map(|n| n.kind);
-                let kind = if matches!(parent_kind, Some(NodeKind::ImplBlock | NodeKind::Trait)) {
-                    NodeKind::Method
-                } else {
-                    NodeKind::Function
-                };
-                let key = emit_def(ctx, parent, scope, child, kind, &name, doc, depth);
-                emitted.push(key.clone());
-                if let Some(body) = child.child_by_field_name("body") {
-                    ctx.call_jobs.push((body, key, scope.clone()));
-                }
-            }
-            "struct_item" | "union_item" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Struct, &name, doc, depth);
-                emitted.push(key.clone());
-                if let Some(body) = child.child_by_field_name("body") {
-                    let mut fcur = body.walk();
-                    for f in body.named_children(&mut fcur) {
-                        if f.kind() != "field_declaration" {
-                            continue; // tuple structs degrade gracefully: no field nodes
-                        }
-                        let Some(fname_n) = f.child_by_field_name("name") else { continue };
-                        let fname = txt(&fname_n, ctx.src).to_string();
-                        let fdoc = prev_doc(f, ctx.src);
-                        scope.push(name.clone());
-                        emit_def(ctx, &key, scope, f, NodeKind::Field, &fname, fdoc, depth + 1);
-                        scope.pop();
-                    }
-                }
-            }
-            "enum_item" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Enum, &name, doc, depth);
-                emitted.push(key.clone());
-                if let Some(body) = child.child_by_field_name("body") {
-                    let mut vcur = body.walk();
-                    for v in body.named_children(&mut vcur) {
-                        if v.kind() != "enum_variant" {
-                            continue;
-                        }
-                        let Some(vname_n) = v.child_by_field_name("name") else { continue };
-                        let vname = txt(&vname_n, ctx.src).to_string();
-                        let vdoc = prev_doc(v, ctx.src);
-                        scope.push(name.clone());
-                        emit_def(ctx, &key, scope, v, NodeKind::EnumVariant, &vname, vdoc, depth + 1);
-                        scope.pop();
-                    }
-                }
-            }
-            "trait_item" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Trait, &name, doc, depth);
-                emitted.push(key.clone());
-                if let Some(body) = child.child_by_field_name("body") {
-                    scope.push(name);
-                    walk_items(ctx, body, scope, &key, depth + 1);
-                    scope.pop();
-                }
-            }
-            "impl_item" => {
-                let Some(type_n) = child.child_by_field_name("type") else { continue };
-                let ty = base_type_name(type_n, ctx.src);
-                let trait_name = child
-                    .child_by_field_name("trait")
-                    .map(|t| base_type_name(t, ctx.src));
-                let label = match &trait_name {
-                    Some(t) => format!("{t} for {ty}"),
-                    None => format!("impl {ty}"),
-                };
-                let key = emit_def(ctx, parent, scope, child, NodeKind::ImplBlock, &label, doc, depth);
-                emitted.push(key.clone());
-                if let (Some(t), Some(n)) = (&trait_name, ctx.graph.nodes.get_mut(&key)) {
-                    n.attrs.extra.insert("impl_trait".into(), t.clone().into());
-                }
-                if let Some(body) = child.child_by_field_name("body") {
-                    scope.push(ty.clone());
-                    let members = walk_items(ctx, body, scope, &key, depth + 1);
-                    scope.pop();
-                    ctx.defines_jobs.push((ty, members));
-                }
-            }
-            "use_declaration" => {
-                // No node — imports are resolver input, plus the simple-name
-                // table used for "imported" hints on call sites.
-                if let Some(arg) = child.child_by_field_name("argument") {
-                    let src = ctx.src;
-                    let before = ctx.graph.imports.len();
-                    flatten_use(arg, Vec::new(), &mut ctx.graph.imports, src);
-                    for r in &mut ctx.graph.imports[before..] {
-                        r.span = span_of(&ctx.file, child);
-                        if !r.glob {
-                            let name = r
-                                .alias
-                                .clone()
-                                .unwrap_or_else(|| r.path.last().cloned().unwrap_or_default());
-                            ctx.simple_imports.insert(name, r.path.join("::"));
-                        }
-                    }
-                }
-            }
-            "const_item" | "static_item" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let kind = if child.kind() == "const_item" {
-                    NodeKind::Constant
-                } else {
-                    NodeKind::Static
-                };
-                let key = emit_def(ctx, parent, scope, child, kind, &name, doc, depth);
-                emitted.push(key.clone());
-                if let Some(value) = child.child_by_field_name("value") {
-                    ctx.call_jobs.push((value, key, scope.clone()));
-                }
-            }
-            "type_item" | "associated_type" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::TypeAlias, &name, doc, depth);
-                emitted.push(key);
-            }
-            "macro_definition" => {
-                let Some(name_n) = child.child_by_field_name("name") else { continue };
-                let name = txt(&name_n, ctx.src).to_string();
-                let key = emit_def(ctx, parent, scope, child, NodeKind::Macro, &name, doc, depth);
-                emitted.push(key);
-            }
-            _ => {} // transparent at item level: loose statements, extern crate, ERROR nodes
+            _ => break,
         }
     }
-    emitted
+    lines.reverse();
+    first_paragraph(&lines)
 }
 
-#[allow(clippy::too_many_arguments)]
-fn emit_def(
-    ctx: &mut Ctx<'_, '_>,
-    parent: &NodeKey,
-    scope: &[String],
-    node: Node,
-    kind: NodeKind,
-    name: &str,
-    doc: Option<String>,
-    depth: u32,
-) -> NodeKey {
-    let qualified = if scope.is_empty() {
-        name.to_string()
+/// Item text minus leading attributes, up to the body — signatures read
+/// `pub async fn f(...) -> T`, not `#[instrument] pub async fn f(...)`.
+/// Items without a body (`mod foo;`, trait method decls) sign in full.
+fn rust_signature(n: Node, src: &[u8]) -> Option<String> {
+    let mut start = n.start_byte();
+    let mut cur = n.walk();
+    for c in n.named_children(&mut cur) {
+        if c.kind() == "attribute_item" {
+            start = c.end_byte();
+        } else {
+            break;
+        }
+    }
+    let end = n
+        .child_by_field_name("body")
+        .map(|b| b.start_byte())
+        .unwrap_or(n.end_byte());
+    if start >= end || end > src.len() {
+        return None;
+    }
+    let raw = std::str::from_utf8(&src[start..end]).ok()?.trim();
+    if raw.is_empty() {
+        None
     } else {
-        format!("{}::{name}", scope.join("::"))
-    };
-    // Collisions (inherent + trait impl with same method name) bump the
-    // disambiguator instead of overwriting.
-    let mut disambiguator = 0u32;
-    let key = loop {
-        let k = NodeKey::Symbol {
-            lang: Lang::Rust,
-            file: ctx.file.clone(),
-            qualified_name: qualified.clone(),
-            kind,
-            disambiguator,
-        };
-        if ctx.used.insert(k.clone()) {
-            break k;
-        }
-        disambiguator += 1;
-    };
-
-    let spec = NodeSpec {
-        kind,
-        label: name.to_string(),
-        ast_kind: node.kind().to_string(),
-        span: Some(span_of(&ctx.file, node)),
-        is_definition: true,
-        attrs: NodeAttrs {
-            signature: signature_of(node, ctx.src),
-            visibility: visibility_of(node, ctx.src),
-            doc,
-            extra: {
-            let mut m = BTreeMap::new();
-            m.insert("depth".into(), serde_json::json!(depth));
-            m
-        },
-        },
-    };
-    ctx.defs_qualified.insert(qualified, key.clone());
-    if matches!(
-        kind,
-        NodeKind::Function
-            | NodeKind::Struct
-            | NodeKind::Enum
-            | NodeKind::Trait
-            | NodeKind::Constant
-            | NodeKind::Static
-            | NodeKind::TypeAlias
-            | NodeKind::Macro
-            | NodeKind::Module
-    ) {
-        ctx.defs_simple.entry(name.to_string()).or_default().push(key.clone());
-    }
-    ctx.graph.nodes.insert(key.clone(), spec);
-    add_edge(ctx, EdgeKind::Contains, parent.clone(), key.clone(), None);
-    key
-}
-
-/// DFS for call sites. Nested items are skipped (their calls belong to
-/// them); nested *items* in fn bodies are a known v1 gap — rare in practice.
-///
-/// Maintains a binding context so data-flow edges can be emitted:
-/// when a `let` binding or `=` assignment captures a call result, subsequent
-/// calls that pass that variable as an argument get a `flows_from` extra
-/// pointing back to the producing call's ordinal.
-fn extract_calls(ctx: &mut Ctx<'_, '_>, root: Node, ancestor: &NodeKey, scope: &[String]) {
-    let mut flat: Vec<tree_sitter::Node> = Vec::new();
-    {
-        let mut walk_stack = vec![root];
-        while let Some(n) = walk_stack.pop() {
-            if n != root && is_item(n.kind()) {
-                continue;
-            }
-            flat.push(n);
-            let mut cur = n.walk();
-            let children: Vec<_> = n.named_children(&mut cur).collect();
-            for c in children.into_iter().rev() {
-                walk_stack.push(c);
-            }
-        }
-    }
-
-    let mut ordinal = 0u32;
-    let mut bindings: std::collections::HashMap<String, u32> = std::collections::HashMap::new();
-    let mut pending_bindings: Vec<String> = Vec::new();
-
-    flat.sort_by_key(|n| n.start_byte());
-    for &n in &flat {
-        match n.kind() {
-            "call_expression" | "macro_invocation" => {
-                if !pending_bindings.is_empty() {
-                    for name in pending_bindings.drain(..) {
-                        bindings.insert(name, ordinal);
-                    }
-                }
-                emit_callsite(ctx, ancestor, scope, ordinal, n, &bindings);
-                ordinal += 1;
-            }
-            "let_declaration" => {
-                let value_node = n.child_by_field_name("value");
-                let has_call_in_init = value_node
-                    .map(|v| v.kind() == "call_expression" || v.kind() == "macro_invocation")
-                    .unwrap_or(false);
-                if has_call_in_init {
-                    let pattern = n.child_by_field_name("pattern");
-                    if let Some(pat) = pattern {
-                        pending_bindings = extract_bound_names(pat, ctx.src);
-                    }
-                } else {
-                    pending_bindings.clear();
-                }
-            }
-            "assignment_expression" => {
-                let has_call_in_right = n.child_by_field_name("right")
-                    .map(|r| r.kind() == "call_expression" || r.kind() == "macro_invocation")
-                    .unwrap_or(false);
-                if has_call_in_right {
-                    let left = n.child_by_field_name("left");
-                    if let Some(l) = left {
-                        if l.kind() == "identifier" || l.kind() == "field_expression" {
-                            pending_bindings = vec![txt(&l, ctx.src).to_string()];
-                        }
-                    }
-                } else {
-                    pending_bindings.clear();
-                }
-            }
-            _ => {}
-        }
+        Some(collapse_ws(raw))
     }
 }
 
-fn extract_identifier_name(node: tree_sitter::Node, src: &[u8]) -> Option<String> {
-    match node.kind() {
-        "identifier" => Some(txt(&node, src).to_string()),
-        "field_expression" => {
-            if let Some(value) = node.child_by_field_name("value") {
-                extract_identifier_name(value, src)
+/// `pub` / `pub(...)` / default private. Rust has no `protected`; `pub(crate)`
+/// and friends are approximated as `Crate`.
+fn rust_visibility(n: Node, src: &[u8]) -> Visibility {
+    let mut cur = n.walk();
+    for c in n.named_children(&mut cur) {
+        if c.kind() == "visibility_modifier" {
+            let t = txt(&c, src);
+            return if t == "pub" {
+                Visibility::Public
+            } else if t.starts_with("pub(") {
+                Visibility::Crate // pub(crate)/pub(super)/pub(in ...) — approximate
             } else {
-                None
-            }
+                Visibility::Private
+            };
         }
-        "reference_expression" | "mut_reference_expression" => {
-            if let Some(inner) = node.child_by_field_name("value") {
-                extract_identifier_name(inner, src)
-            } else {
-                let mut cur = node.walk();
-                let first = node.named_children(&mut cur).next()
-                    .and_then(|c| extract_identifier_name(c, src));
-                first
-            }
-        }
-        "pointer_expression" => {
-            let mut cur = node.walk();
-            let first = node.named_children(&mut cur).next()
-                .and_then(|c| extract_identifier_name(c, src));
-            first
-        }
-        _ => None,
     }
+    Visibility::Private
 }
 
-/// Extract names bound by a let pattern (single or tuple).
-fn extract_bound_names(node: tree_sitter::Node, src: &[u8]) -> Vec<String> {
-    match node.kind() {
-        "identifier" => vec![txt(&node, src).to_string()],
-        "tuple_pattern" => {
-            let mut cur = node.walk();
-            node.named_children(&mut cur)
-                .filter(|c| c.kind() == "identifier")
-                .map(|c| txt(&c, src).to_string())
-                .collect()
-        }
-        _ => Vec::new(),
-    }
+/// A definition's body (`fn`/`struct`/`impl`/...) or value (`const`/`static`).
+fn rust_body_of(n: Node) -> Option<Node> {
+    n.child_by_field_name("body")
+        .or_else(|| n.child_by_field_name("value"))
 }
 
+// --- call sites -----------------------------------------------------------
 
-fn emit_callsite(
-    ctx: &mut Ctx<'_, '_>,
-    ancestor: &NodeKey,
-    scope: &[String],
-    ordinal: u32,
-    call: Node,
-    bindings: &std::collections::HashMap<String, u32>,
-) {
-    let is_macro = call.kind() == "macro_invocation";
-    let func = if is_macro {
+/// Calls name their callee in `function`; macros in `macro`.
+fn rust_call_target(call: Node) -> Option<Node> {
+    if call.kind() == "macro_invocation" {
         call.child_by_field_name("macro")
     } else {
         call.child_by_field_name("function")
-    };
-    let Some(func) = func else { return };
-
-    let callee = txt(&func, ctx.src).to_string();
-    let res = resolve_callee(ctx, scope, func, &callee);
-
-    let key = NodeKey::Anchored {
-        ancestor: Box::new(ancestor.clone()),
-        ast_kind: call.kind().to_string(),
-        ordinal,
-    };
-    let mut extra = BTreeMap::new();
-    extra.insert("callee".into(), res.label.clone().into());
-    extra.insert("resolution".into(), res.tag.into());
-    if let Some(hint) = res.hint {
-        extra.insert("hint".into(), hint.into());
-    }
-    
-    // Track data flow: which arguments reference previously-bound variables.
-    if !bindings.is_empty() {
-        let mut flows = Vec::new();
-        let args_node = call.child_by_field_name("arguments");
-        if let Some(args) = args_node {
-            let mut cur = args.walk();
-            for (i, arg) in args.named_children(&mut cur).enumerate() {
-                let name = extract_identifier_name(arg, ctx.src);
-                if let Some(name) = name {
-                    if let Some(&producer_ordinal) = bindings.get(&name) {
-                        flows.push(format!("{i}->{producer_ordinal}"));
-                    }
-                }
-            }
-        }
-        if !flows.is_empty() {
-            extra.insert("flows_from".into(), flows.join(",").into());
-        }
-    }
-    ctx.graph.nodes.insert(
-        key.clone(),
-        NodeSpec {
-            kind: NodeKind::CallSite,
-            label: res.label,
-            ast_kind: call.kind().to_string(),
-            span: Some(span_of(&ctx.file, call)),
-            is_definition: false,
-            attrs: NodeAttrs { extra, ..Default::default() },
-        },
-    );
-    add_edge(ctx, EdgeKind::Contains, ancestor.clone(), key.clone(), None);
-    if let Some(target) = res.target {
-        add_edge(ctx, EdgeKind::Calls, key, target, Some(span_of(&ctx.file, call)));
     }
 }
 
-struct Resolution {
-    label: String,
-    tag: &'static str,
-    target: Option<NodeKey>,
-    hint: Option<String>,
-}
-
-fn resolve_callee(ctx: &Ctx<'_, '_>, scope: &[String], func: Node, callee: &str) -> Resolution {
-    let short = || callee.rsplit("::").next().unwrap_or(callee).to_string();
+/// How a callee expression resolves syntactically.
+fn rust_callee_shape(func: Node, src: &[u8]) -> CalleeShape {
     match func.kind() {
-        "identifier" => {
-            if let Some(k) = unique_simple(ctx, callee) {
-                return Resolution { label: short(), tag: "same_file", target: Some(k), hint: None };
-            }
-            if let Some(path) = ctx.simple_imports.get(callee) {
-                return Resolution {
-                    label: short(),
-                    tag: "imported",
-                    target: None,
-                    hint: Some(path.clone()),
-                };
-            }
-            Resolution { label: short(), tag: "unresolved", target: None, hint: None }
-        }
-        "scoped_identifier" => {
-            if let Some(k) = ctx.defs_qualified.get(callee) {
-                return Resolution { label: short(), tag: "same_file", target: Some(k.clone()), hint: None };
-            }
-            if let Some(stripped) = callee.strip_prefix("self::") {
-                if let Some(k) = ctx.defs_qualified.get(stripped) {
-                    return Resolution { label: short(), tag: "same_file", target: Some(k.clone()), hint: None };
-                }
-            }
-            Resolution { label: short(), tag: "path_unresolved", target: None, hint: Some(callee.into()) }
-        }
+        "identifier" => CalleeShape::Simple,
+        "scoped_identifier" => CalleeShape::Path,
         "field_expression" => {
             let method = func
                 .child_by_field_name("field")
-                .map(|f| txt(&f, ctx.src).to_string())
-                .unwrap_or_else(|| short());
+                .map(|f| txt(&f, src).to_string())
+                .unwrap_or_else(|| txt(&func, src).rsplit("::").next().unwrap_or("").to_string());
             let receiver = func
                 .child_by_field_name("value")
-                .map(|v| txt(&v, ctx.src).to_string())
+                .map(|v| txt(&v, src).to_string())
                 .unwrap_or_default();
-            if receiver == "self" && !scope.is_empty() {
-                let q = format!("{}::{method}", scope.join("::"));
-                if let Some(k) = ctx.defs_qualified.get(&q) {
-                    return Resolution { label: method, tag: "self_method", target: Some(k.clone()), hint: None };
-                }
-            }
-            Resolution {
-                label: method,
-                tag: "method_unresolved",
-                target: None,
-                hint: Some(receiver.chars().take(32).collect()),
-            }
+            CalleeShape::Method { receiver, method }
         }
-        _ => Resolution {
-            label: callee.chars().take(32).collect(),
-            tag: "dynamic",
-            target: None,
-            hint: None,
-        },
+        _ => CalleeShape::Dynamic,
     }
 }
 
-// --- use-tree flattening -------------------------------------------------
+/// Data-flow capture: a `let`/assignment whose RHS is a call binds the name.
+fn rust_binding(n: Node, src: &[u8]) -> BindingCapture {
+    let is_call = |v: Node| RUST_CALL_KINDS.contains(&v.kind());
+    match n.kind() {
+        "let_declaration" => {
+            let has_call = n.child_by_field_name("value").map(is_call).unwrap_or(false);
+            if !has_call {
+                return BindingCapture::Reset;
+            }
+            match n.child_by_field_name("pattern") {
+                Some(pat) => BindingCapture::Bind(extract_bound_names(pat, src)),
+                None => BindingCapture::Leave,
+            }
+        }
+        "assignment_expression" => {
+            let has_call = n.child_by_field_name("right").map(is_call).unwrap_or(false);
+            if !has_call {
+                return BindingCapture::Reset;
+            }
+            match n.child_by_field_name("left") {
+                Some(l) if l.kind() == "identifier" || l.kind() == "field_expression" => {
+                    BindingCapture::Bind(vec![txt(&l, src).to_string()])
+                }
+                _ => BindingCapture::Leave,
+            }
+        }
+        _ => BindingCapture::NotBinding,
+    }
+}
+
+/// `use a::b::{c, d as e};` — flatten the argument into resolver records.
+fn rust_imports(n: Node, out: &mut Vec<ImportRecord>, src: &[u8]) {
+    if let Some(arg) = n.child_by_field_name("argument") {
+        flatten_use(arg, Vec::new(), out, src);
+    }
+}
+
+// --- impl blocks, modules, type names -------------------------------------
+
+/// `impl Trait for Type` / `impl Type` → label, type name, optional trait.
+fn rust_impl_info(n: Node, src: &[u8]) -> Option<ImplInfo> {
+    let type_n = n.child_by_field_name("type")?;
+    let type_name = base_type_name(type_n, src);
+    let trait_name = n.child_by_field_name("trait").map(|t| base_type_name(t, src));
+    let label = match &trait_name {
+        Some(t) => format!("{t} for {type_name}"),
+        None => format!("impl {type_name}"),
+    };
+    Some(ImplInfo { label, type_name, trait_name })
+}
+
+/// A body-less `mod foo;` — its contents live in a sibling file that
+/// cg-resolve joins. `None` for anything that is not a bare module decl.
+fn rust_mod_decl_name(n: Node, src: &[u8]) -> Option<String> {
+    if n.kind() != "mod_item" {
+        return None;
+    }
+    n.child_by_field_name("name").map(|m| txt(&m, src).to_string())
+}
+
+/// "impl<T> Foo<T>" → "Foo"; "impl crate::a::Foo" → "Foo".
+fn base_type_name(n: Node, src: &[u8]) -> String {
+    match n.kind() {
+        "type_identifier" => txt(&n, src).to_string(),
+        "generic_type" => n
+            .named_child(0)
+            .map(|c| base_type_name(c, src))
+            .unwrap_or_else(|| txt(&n, src).to_string()),
+        "scoped_type_identifier" => n
+            .child_by_field_name("name")
+            .map(|c| txt(&c, src).to_string())
+            .unwrap_or_else(|| txt(&n, src).to_string()),
+        _ => collapse_ws(txt(&n, src)),
+    }
+}
+
+// --- use-tree flattening --------------------------------------------------
 
 fn flatten_use(n: Node, prefix: Vec<String>, out: &mut Vec<ImportRecord>, src: &[u8]) {
     let record = |path: Vec<String>, alias: Option<String>, glob: bool| ImportRecord {
@@ -696,109 +415,54 @@ fn flatten_use(n: Node, prefix: Vec<String>, out: &mut Vec<ImportRecord>, src: &
     }
 }
 
-// --- small helpers --------------------------------------------------------
+// --- data-flow name helpers -----------------------------------------------
 
-fn is_item(kind: &str) -> bool {
-    matches!(
-        kind,
-        "mod_item"
-            | "function_item"
-            | "function_signature_item"
-            | "struct_item"
-            | "union_item"
-            | "enum_item"
-            | "trait_item"
-            | "impl_item"
-            | "use_declaration"
-            | "const_item"
-            | "static_item"
-            | "type_item"
-            | "associated_type"
-            | "macro_definition"
-    )
-}
-
-fn unique_simple(ctx: &Ctx<'_, '_>, name: &str) -> Option<NodeKey> {
-    let v = ctx.defs_simple.get(name)?;
-    if v.len() == 1 { Some(v[0].clone()) } else { None }
-}
-
-fn add_edge(ctx: &mut Ctx<'_, '_>, kind: EdgeKind, source: NodeKey, target: NodeKey, span: Option<Span>) {
-    let key = EdgeKey { kind, source: source.clone(), target: target.clone(), ordinal: 0 };
-    ctx.graph.edges.insert(key, EdgeSpec { kind, span, weight: 1 });
-}
-
-fn visibility_of(n: Node, src: &[u8]) -> Visibility {
-    let mut cur = n.walk();
-    for c in n.named_children(&mut cur) {
-        if c.kind() == "visibility_modifier" {
-            let t = txt(&c, src);
-            return if t == "pub" {
-                Visibility::Public
-            } else if t.starts_with("pub(") {
-                Visibility::Crate // pub(crate)/pub(super)/pub(in ...) — approximate
+fn extract_identifier_name(node: Node, src: &[u8]) -> Option<String> {
+    match node.kind() {
+        "identifier" => Some(txt(&node, src).to_string()),
+        "field_expression" => {
+            if let Some(value) = node.child_by_field_name("value") {
+                extract_identifier_name(value, src)
             } else {
-                Visibility::Private
-            };
-        }
-    }
-    Visibility::Private
-}
-
-/// "impl<T> Foo<T>" → "Foo"; "impl crate::a::Foo" → "Foo".
-fn base_type_name(n: Node, src: &[u8]) -> String {
-    match n.kind() {
-        "type_identifier" => txt(&n, src).to_string(),
-        "generic_type" => n
-            .named_child(0)
-            .map(|c| base_type_name(c, src))
-            .unwrap_or_else(|| txt(&n, src).to_string()),
-        "scoped_type_identifier" => n
-            .child_by_field_name("name")
-            .map(|c| txt(&c, src).to_string())
-            .unwrap_or_else(|| txt(&n, src).to_string()),
-        _ => collapse_ws(txt(&n, src)),
-    }
-}
-
-/// Contiguous `///` block above a sibling (fields, variants).
-fn prev_doc(n: Node, src: &[u8]) -> Option<String> {
-    let mut lines = Vec::new();
-    let mut cur = n;
-    while let Some(p) = cur.prev_named_sibling() {
-        match doc_line(txt(&p, src)) {
-            Some(l) if p.kind() == "line_comment" => {
-                lines.push(l);
-                cur = p;
+                None
             }
-            _ => break,
         }
+        "reference_expression" | "mut_reference_expression" => {
+            if let Some(inner) = node.child_by_field_name("value") {
+                extract_identifier_name(inner, src)
+            } else {
+                let mut cur = node.walk();
+                let first = node
+                    .named_children(&mut cur)
+                    .next()
+                    .and_then(|c| extract_identifier_name(c, src));
+                first
+            }
+        }
+        "pointer_expression" => {
+            let mut cur = node.walk();
+            let first = node
+                .named_children(&mut cur)
+                .next()
+                .and_then(|c| extract_identifier_name(c, src));
+            first
+        }
+        _ => None,
     }
-    lines.reverse();
-    first_paragraph(&lines)
 }
 
-fn txt<'a>(n: &Node, src: &'a [u8]) -> &'a str {
-    n.utf8_text(src).unwrap_or("")
-}
-
-fn span_of(file: &Path, n: Node) -> Span {
-    Span {
-        file: file.into(),
-        start_byte: n.start_byte() as u32,
-        end_byte: n.end_byte() as u32,
-        start: Point { row: n.start_position().row as u32, col: n.start_position().column as u32 },
-        end: Point { row: n.end_position().row as u32, col: n.end_position().column as u32 },
-    }
-}
-
-fn dummy_span() -> Span {
-    Span {
-        file: PathBuf::new(),
-        start_byte: 0,
-        end_byte: 0,
-        start: Point { row: 0, col: 0 },
-        end: Point { row: 0, col: 0 },
+/// Extract names bound by a let pattern (single or tuple).
+fn extract_bound_names(node: Node, src: &[u8]) -> Vec<String> {
+    match node.kind() {
+        "identifier" => vec![txt(&node, src).to_string()],
+        "tuple_pattern" => {
+            let mut cur = node.walk();
+            node.named_children(&mut cur)
+                .filter(|c| c.kind() == "identifier")
+                .map(|c| txt(&c, src).to_string())
+                .collect()
+        }
+        _ => Vec::new(),
     }
 }
 
@@ -807,7 +471,8 @@ fn dummy_span() -> Span {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::SourceFile;
+    use cg_ir::{EdgeKind, NodeKey, NodeSpec};
+    use std::path::PathBuf;
 
     const FIXTURE: &str = r#"
 use std::collections::HashMap;
@@ -921,8 +586,6 @@ mod inner {
         }
     }
 
-
-
     #[test]
     fn tracks_data_flow_across_bindings() {
         let src = r#"
@@ -1027,23 +690,33 @@ fn test() {
         assert_eq!(callsites(&before), callsites(&after), "anchored keys renumbered");
     }
 
-    /// The repo renders itself: extract this very file.
+    /// The repo renders itself: extract this crate's own extractor sources.
+    ///
+    /// After the profile refactor the extractor spans three files, so the
+    /// dogfood check covers the walker and the profile too, not just this one.
     #[test]
     fn dogfoods_own_source() {
-        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src/rust.rs");
-        let text = std::fs::read_to_string(&path).unwrap();
-        let file = SourceFile { path: path.clone(), lang: Lang::Rust, text };
-        let g = RustExtractor.extract(&file).unwrap();
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut total_nodes = 0usize;
+        for (name, expect_def) in [
+            ("rust.rs", "RustExtractor"),
+            ("walk.rs", "walk_items"),
+            ("profile.rs", "LangProfile"),
+        ] {
+            let path = dir.join(name);
+            let text = std::fs::read_to_string(&path).unwrap();
+            let file = SourceFile { path: path.clone(), lang: Lang::Rust, text };
+            let g = RustExtractor.extract(&file).unwrap();
+            def_key(&g, expect_def);
 
-        def_key(&g, "RustExtractor");
-        def_key(&g, "walk_items");
-        assert!(g.nodes.len() > 60, "suspiciously thin self-render");
-
-        let sites = g.nodes.values().filter(|n| n.kind == NodeKind::CallSite).count();
-        let calls = g.edges.values().filter(|e| e.kind == EdgeKind::Calls).count();
-        eprintln!(
-            "self-render of rust.rs: {} nodes ({} call sites), {} edges ({} resolved calls), {} imports",
-            g.nodes.len(), sites, g.edges.len(), calls, g.imports.len()
-        );
+            let sites = g.nodes.values().filter(|n| n.kind == NodeKind::CallSite).count();
+            let calls = g.edges.values().filter(|e| e.kind == EdgeKind::Calls).count();
+            eprintln!(
+                "self-render of {name}: {} nodes ({} call sites), {} edges ({} resolved calls), {} imports",
+                g.nodes.len(), sites, g.edges.len(), calls, g.imports.len()
+            );
+            total_nodes += g.nodes.len();
+        }
+        assert!(total_nodes > 100, "suspiciously thin self-render: {total_nodes} nodes");
     }
 }
