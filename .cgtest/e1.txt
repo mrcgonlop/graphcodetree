@@ -1,0 +1,16 @@
+file:///D:/proyects/graphcodetree/.cgtest/probe.mjs:1
+import { S } from '../web/refactor/app/state.js';
+         ^
+SyntaxError: Named export 'S' not found. The requested module '../web/refactor/app/state.js' is a CommonJS module, which may not support all module.exports as named exports.
+CommonJS modules can always be imported via the default export, for example using:
+
+import pkg from '../web/refactor/app/state.js';
+const { S } = pkg;
+
+    at ModuleJob._instantiate (node:internal/modules/esm/module_job:134:21)
+    at async ModuleJob.run (node:internal/modules/esm/module_job:217:5)
+    at async ModuleLoader.import (node:internal/modules/esm/loader:323:24)
+    at async loadESM (node:internal/process/esm_loader:28:7)
+    at async handleMainPromise (node:internal/modules/run_main:113:12)
+
+Node.js v20.12.2

@@ -24,6 +24,37 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 .clear-btn { position: absolute; right: 2px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #565f89; cursor: pointer; font-size: 14px; padding: 2px 6px; display: none; line-height: 1; }
 .clear-btn:hover { color: #f7768e; }
 .search-wrap input:not(:placeholder-shown) ~ .clear-btn { display: block; }
+#graph-controls { padding: 4px 18px 8px; border-bottom: 1px solid #2f3346; }
+#graph-controls .ctrl-group { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #565f89; margin: 3px 0; }
+#graph-controls .ctrl-group label { min-width: 72px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+#graph-controls .ctrl-group input[type="range"] { flex: 1; accent-color: #7aa2f7; height: 4px; cursor: pointer; }
+#graph-controls .ctrl-group span { font-size: 11px; color: #a9b1d6; min-width: 22px; text-align: right; }
+#graph-controls .ctrl-actions { display: flex; gap: 6px; margin-top: 6px; }
+#graph-controls .ctrl-btn { font-size: 11px; padding: 3px 12px; border: 1px solid #2f3346; border-radius: 4px; background: #292e42; color: #a9b1d6; cursor: pointer; transition: all 0.15s; }
+#graph-controls .ctrl-btn:hover { background: #363b54; border-color: #7aa2f7; }
+
+#metrics { padding: 6px 18px; border-bottom: 1px solid #2f3346; font-size: 10.5px; line-height: 1.6; color: #9499c4; background: #16161f; font-variant-numeric: tabular-nums; }
+.panel { padding: 4px 18px 8px; border-bottom: 1px solid #2f3346; }
+.panel summary { font-size: 10px; color: #7aa2f7; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; cursor: pointer; padding: 4px 0; list-style: none; }
+.panel summary::-webkit-details-marker { display: none; }
+.panel summary::before { content: '\25B8  '; color: #565f89; }
+.panel[open] summary::before { content: '\25BE  '; }
+.panel .ctrl-group { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #565f89; margin: 3px 0; }
+.panel .ctrl-group label { min-width: 92px; }
+.panel .ctrl-group input[type="range"] { flex: 1; accent-color: #7aa2f7; height: 4px; cursor: pointer; }
+.panel .ctrl-group span { font-size: 11px; color: #a9b1d6; min-width: 34px; text-align: right; }
+.panel .ctrl-group select { flex: 1; font-size: 11px; background: #1f2335; color: #c0caf5; border: 1px solid #2f3346; border-radius: 4px; padding: 2px 4px; }
+.panel .ctrl-group input[type="checkbox"] { accent-color: #7aa2f7; }
+.panel .ctrl-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.panel .ctrl-actions label { font-size: 11px; color: #a9b1d6; display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.panel .ctrl-btn { font-size: 11px; padding: 3px 10px; border: 1px solid #2f3346; border-radius: 4px; background: #292e42; color: #a9b1d6; cursor: pointer; transition: all 0.15s; }
+.panel .ctrl-btn:hover { background: #363b54; border-color: #7aa2f7; }
+/* Sub-heading that splits a panel into parameter groups (tree geometry,
+   cose forces, overlap pass) so the two engines don't look like one
+   17-slider soup. */
+.panel .param-group { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; color: #3b4261; margin: 10px 0 5px; padding-top: 8px; border-top: 1px solid #24283b; }
+.panel .param-group:first-of-type { margin-top: 2px; padding-top: 0; border-top: none; }
+
 #search-box { padding: 8px 18px; border-bottom: 1px solid #2f3346; }
 #search-box input { border: 1px solid #2f3346; border-radius: 4px; background: #1f2335; color: #c0caf5; font-size: 12px; outline: none; }
 #search-box input:focus { border-color: #7aa2f7; }

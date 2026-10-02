@@ -1,99 +1,110 @@
 // ── Hierarchical element builder ─────────────────────────────────────
 // Reads the snapshot and produces { nodes, edges } for Cytoscape.
+// Honors S.detail so the compound nesting can be peeled back one layer
+// at a time:
+//   'full'  → folder containers → file containers → symbols
+//   'files' → file containers → symbols
+//   'flat'  → symbols only (no compound nodes, pure graph)
 
 import { nodeId, resolveToSymbol, shortLabel } from './utils.js';
 import { KIND_COLORS, EDGE_COLORS } from './constants.js';
 import { S } from './state.js';
 
+/// Normalize `.\crates\x.rs` and `./crates/x.rs` to `crates/x.rs`.
+/// The extractor emits Windows-style paths, and the leading `.` used to
+/// become a phantom top-level folder in the tree.
+function normPath(p) {
+    return (p || 'unknown').replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
 export function buildElements() {
     const snapshot = S.snapshot;
     if (!snapshot) return { nodes: [], edges: [] };
+
+    const detail = S.detail || 'full';
+    const useFolders = detail === 'full';
+    const useFiles = detail !== 'flat';
 
     const nodes = [], edges = [], added = new Set();
     const fileSymbols = new Map();
 
     for (const n of snapshot.nodes) {
-        if (n.key.key !== 'symbol') continue;
+        if (!n.key || n.key.key !== 'symbol') continue;
         const id = nodeId(n.key);
         if (added.has(id)) continue;
         added.add(id);
-        const file = n.file || 'unknown';
+        const file = normPath(n.file);
         if (!fileSymbols.has(file)) fileSymbols.set(file, []);
-        fileSymbols.get(file).push({ id, key: n.key, kind: n.kind, depth: n.depth || 0, doc: n.attrs && n.attrs.doc || null });
+        fileSymbols.get(file).push({ id, key: n.key, kind: n.kind, depth: n.depth || 0, doc: (n.attrs && n.attrs.doc) || null });
     }
 
-    function folderPart(fp) { var norm = fp.replace(/\\/g, '/'), i = norm.lastIndexOf('/'); return i >= 0 ? norm.substring(0, i) : ''; }
-    function fileName(fp) { return fp.replace(/^.*[/\\]/, ''); }
+    function folderPart(fp) { const i = fp.lastIndexOf('/'); return i >= 0 ? fp.substring(0, i) : ''; }
+    function fileName(fp) { return fp.replace(/^.*\//, ''); }
 
-    // ── Build folder tree from file paths ──
-    const folderMap = new Map();
-    folderMap.set('', { parent: null, children: [], files: [] });
-
-    for (const _fp of fileSymbols.keys()) {
-        var parts = _fp.replace(/\\/g, '/').split('/'), acc = '';
-        for (var i = 0; i < parts.length - 1; i++) {
-            var parent = acc;
-            acc = acc ? acc + '/' + parts[i] : parts[i];
-            if (!folderMap.has(acc)) {
-                folderMap.set(acc, { parent, children: [], files: [] });
-                if (parent !== null) folderMap.get(parent).children.push(acc);
+    // ── Folder tree (only for detail 'full') ──
+    if (useFolders) {
+        const folderMap = new Map();
+        folderMap.set('', { parent: null, children: [], files: [] });
+        for (const fp of fileSymbols.keys()) {
+            const parts = fp.split('/');
+            let acc = '';
+            for (let i = 0; i < parts.length - 1; i++) {
+                const parent = acc;
+                acc = acc ? acc + '/' + parts[i] : parts[i];
+                if (!folderMap.has(acc)) {
+                    folderMap.set(acc, { parent, children: [], files: [] });
+                    folderMap.get(parent).children.push(acc);
+                }
             }
+            folderMap.get(acc).files.push(fp);
         }
-        folderMap.get(acc || '').files.push(_fp);
+        for (const p of folderMap.keys()) {
+            const info = folderMap.get(p);
+            const fid = 'folder:' + (p || '__root__');
+            const pfid = (info.parent !== null && folderMap.has(info.parent)) ? 'folder:' + (info.parent || '__root__') : null;
+            nodes.push({
+                data: {
+                    id: fid, parent: pfid, label: p ? fileName(p) : 'root',
+                    kind: 'folder', color: '#1a1b2e', depth: 0, file: p, _filePath: p,
+                    _nodeCount: info.files.length + info.children.length,
+                    _isContainer: true, _isFolder: true, _collapsible: true,
+                },
+            });
+        }
     }
 
-    // ── Create folder compound nodes ──
-    const folderIds = new Set();
-    function emitFolder(path) {
-        if (folderIds.has(path)) return;
-        folderIds.add(path);
-        var info = folderMap.get(path);
-        if (!info) return;
-        var fid = 'folder:' + (path || '__root__');
-        var pfid = null;
-        if (info.parent !== null) {
-            emitFolder(info.parent);
-            pfid = 'folder:' + (info.parent || '__root__');
-        }
-        nodes.push({
-            data: {
-                id: fid, parent: pfid, label: path ? path.replace(/^.*[/\\]/, '') : 'root',
-                kind: 'folder', color: '#1a1b2e', depth: 0, file: path,
-                _filePath: path, _nodeCount: info.files.length + info.children.length,
-                _isContainer: true, _isFolder: true, _collapsible: true,
-            },
-        });
-    }
-    for (const _p of folderMap.keys()) emitFolder(_p);
-
-    // ── Create file compound nodes with symbol children ──
+    // ── File containers + symbol children ──
     const fileNodeIds = new Set();
-    for (const [_fp2, symbols] of fileSymbols) {
-        var fid = 'file:' + _fp2;
-        fileNodeIds.add(fid);
-        var fpath = folderPart(_fp2);
-        var pfid2 = 'folder:' + (fpath || '__root__');
-        nodes.push({
-            data: {
-                id: fid, parent: pfid2, label: fileName(_fp2),
-                kind: 'file', color: '#292e42', file: _fp2, depth: 0,
-                qualifiedName: _fp2, _filePath: _fp2, _nodeCount: symbols.length,
-                _isContainer: true, _isFileContainer: true, _collapsible: true,
-            },
-        });
+    for (const [fp, symbols] of fileSymbols) {
+        var fid = null;
+        if (useFiles) {
+            fid = 'file:' + fp;
+            fileNodeIds.add(fid);
+            var fpath = folderPart(fp);
+            var pfid2 = (useFolders && fpath !== fp) ? 'folder:' + (fpath || '__root__') : null;
+            nodes.push({
+                data: {
+                    id: fid, parent: pfid2, label: fileName(fp),
+                    kind: 'file', color: '#292e42', file: fp, depth: 0,
+                    qualifiedName: fp, _filePath: fp, _nodeCount: symbols.length,
+                    _isContainer: true, _isFileContainer: true, _collapsible: true,
+                },
+            });
+        }
         for (const s of symbols) {
             var qn = s.key.qualified_name || s.key.qualifiedName || s.key.name || s.id;
             nodes.push({
                 data: {
                     id: s.id, parent: fid, label: shortLabel(s.key),
                     qualifiedName: qn, kind: s.kind, color: KIND_COLORS[s.kind] || '#bb9af7',
-                    file: _fp2, depth: s.depth, doc: s.doc,
+                    file: fp, depth: s.depth, doc: s.doc,
+                    _isSymbol: true,
                 },
             });
         }
     }
 
-    // ── Build edges between symbol nodes ──
+    // ── Edges between symbol nodes ──
     const edgeAdded = new Set();
     for (const e of snapshot.edges) {
         var srcKey = resolveToSymbol(e.source), tgtKey = resolveToSymbol(e.target);

@@ -1,0 +1,57 @@
+# 426 nodes, 628 edges
+#   slow boundingBox: folder:__root__ took 144ms
+#   measure fresh (35 boxes) in 147ms
+#   tree run 1 in 101ms
+#   measure 1 in 1ms
+#   tree run 2 in 22ms
+#   measure 2 in 1ms
+# fresh build            extent 3030x1912
+# tree → tree            extent 3030x1912   (identical)
+# measured sizes: fresh → tree   34 box(es) changed
+# measured sizes: tree  → tree   0 box(es) changed
+# PASS  tree run 2 reproduces run 1 extent   [3030x1912 vs 3030x1912]
+# PASS  tree run 2 changes no rendered box size
+#   grid run in 52ms
+#   measure 3 in 1ms
+# measured sizes: tree  → grid   34 node(s) changed
+     folder:__root__   {"w":3029.5,"h":1911.5} → {"w":1201.5,"h":1201.5}
+     folder:crates   {"w":2985.5,"h":1867.5} → {"w":1157.5,"h":1157.5}
+     folder:crates/ir   {"w":1998.5,"h":1021.5} → {"w":1113.5,"h":1013.5}
+     folder:crates/ir/src   {"w":1954.5,"h":977.5} → {"w":1069.5,"h":969.5}
+     folder:crates/store   {"w":775.5,"h":808.5} → {"w":1113.5,"h":363.5}
+     folder:crates/store/src   {"w":731.5,"h":764.5} → {"w":1069.5,"h":319.5}
+#   tree run 3 in 91ms
+#   measure 4 in 0ms
+# grid → tree            extent 3030x1912   (identical to fresh)
+# measured sizes: grid → tree   34 box(es) changed
+# settled-tree sizes vs post-grid sizes: 0 box(es) differ by >0.5u
+# measured sizes: tree → tree-again (measured twice, no run): 0 changed
+# done
+
+## extreme sliders: nodeSize 80, pads 60/80, gaps 80/80/160/240, aspect 3
+# pass 1: extent 15278x3396   boxes whose size changed during the pass: 34
+     resize: folder:__root__   3639.5x2521.5 → 15277.5x3395.5
+     resize: folder:crates   3475.5x2357.5 → 15113.5x3231.5
+     resize: folder:crates/ir   2368.5x1391.5 → 9217.5x1800.5
+     resize: folder:crates/ir/src   2204.5x1227.5 → 9053.5x1636.5
+# pass 2: extent 15278x3396   boxes whose size changed during the pass: 0   (same extent as previous pass)
+# PASS  extreme parameters: pass 2 reproduces the fixed point   [15278x3396 vs 15278x3396]
+# pass 3: extent 15278x3396   boxes whose size changed during the pass: 0   (same extent as previous pass)
+# PASS  extreme parameters: pass 3 reproduces the fixed point   [15278x3396 vs 15278x3396]
+# pass 4: extent 15278x3396   boxes whose size changed during the pass: 0   (same extent as previous pass)
+# PASS  extreme parameters: pass 4 reproduces the fixed point   [15278x3396 vs 15278x3396]
+## reference tree: 15278x3396
+    settled  folder:crates/store/src  box 4016.5x861.5  kids 2  centreOffset 328/0  boxMinusKids -2009.5/-861.5
+    settled  folder:crates/ir/src  box 9053.5x1636.5  kids 8  centreOffset 246/82  boxMinusKids -1763.5/-779.5
+    settled  file:crates/extract/src/rust.rs  box 2009.5x697.5  kids 46  centreOffset 0/0  boxMinusKids -205.5/-205.5
+    after bf folder:crates/store/src  box 2324.5x317.5  kids 2  centreOffset 0/0  boxMinusKids -317.5/-317.5
+    after bf folder:crates/ir/src  box 7607.5x1174.5  kids 8  centreOffset 0/0  boxMinusKids -317.5/-317.5
+    after bf file:crates/extract/src/rust.rs  box 153.5x153.5  kids 46  centreOffset -5.198555956678709e+48/0  boxMinusKids 1.1220216606498197e+50/8.000000000000001e+49
+    after tree folder:crates/store/src  box 4016.5x861.5  kids 2  centreOffset 328/0  boxMinusKids -2009.5/-861.5
+    after tree folder:crates/ir/src  box 9053.5x1636.5  kids 8  centreOffset 246/82  boxMinusKids -1763.5/-779.5
+    after tree file:crates/extract/src/rust.rs  box 2009.5x697.5  kids 46  centreOffset 0/0  boxMinusKids -205.5/-205.5
+# PASS  tree after breadthfirst matches the reference extent   [15278x3396 vs 15278x3396]
+# PASS  box sizes after breadthfirst match the settled tree exactly
+# PASS  consecutive tree runs move nothing   [0 node(s) moved, max 0u]
+
+ALL DRIFT CHECKS PASSED   (8 assertions)

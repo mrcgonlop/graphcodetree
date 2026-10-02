@@ -1,16 +1,26 @@
 // ── Main entry point ────────────────────────────────────────────────
 
 import { S } from './state.js';
-import { KIND_COLORS, KIND_ORDER } from './constants.js';
+import { KIND_COLORS, KIND_ORDER, BORDERS } from './constants.js';
 import { esc } from './utils.js';
 import { buildElements } from './builder.js';
 import { refreshVisibility, toggleContainer, scheduleBoxLayout } from './visibility.js';
 import { createLabelOverlays } from './overlay.js';
 import { focusNode, unfocusAll } from './focus.js';
 import { showDetails, setFocusHandler } from './details.js';
+import { buildLayoutOptions } from './layout.js';
+import { registerHierarchyLayout } from './hierarchy.js';
+import { initControls } from './controls.js';
 
 // Wire the focus handler into details (breaks circular dep)
 setFocusHandler(focusNode);
+
+// Register the deterministic containment engine as a normal cytoscape
+// layout, so `{ name: 'hierarchy' }` runs through the exact same path as
+// cose/grid/breadthfirst. This is the only place that touches the global
+// `cytoscape`, which is why registration happens here and not in the
+// engine module itself.
+registerHierarchyLayout(typeof cytoscape === 'function' ? cytoscape : null);
 
 // ── Render ──────────────────────────────────────────────────────────
 
@@ -20,20 +30,9 @@ function render(snapshot) {
     if (S.cy) S.cy.destroy();
     container.innerHTML = '<div class="tooltip">Scroll to zoom \u00B7 Drag to pan \u00B7 Click to focus \u00B7 Double-click canvas to show all</div>';
 
-    // Layout: no animation (avoid timing races with box-layout)
-    const layoutOpts = {
-        name: 'cose',
-        animate: false,
-        gravity: 0.2,
-        numIter: 800,
-        idealEdgeLength: 200,
-        nodeRepulsion: function (node) {
-            return node.data('_isContainer') ? 8000000 : 600000;
-        },
-        padding: 80,
-        randomize: false,
-        nodeDimensionsIncludeLabels: false,
-    };
+    // Layout options come from the live slider state (see layout.js):
+    // every structural parameter is tunable via the sidebar sliders.
+    const layoutOpts = buildLayoutOptions();
 
     S.cy = cytoscape({
         container: container,
@@ -49,11 +48,18 @@ function render(snapshot) {
                     'text-valign': 'bottom',
                     'text-halign': 'center',
                     'text-margin-y': 6,
-                    width: 28,
-                    height: 28,
-                    'border-width': 2,
-                    'border-color': '#2f3346',
-                    'border-opacity': 0.8,
+                    'border-width': BORDERS.symbol,
+                    'border-color': '#4a5080',
+                    'border-opacity': 0.9,
+                },
+            },
+            {
+                // Only leaf symbols get an explicit size; compound
+                // containers derive theirs from their children.
+                selector: 'node[_isSymbol]',
+                style: {
+                    width: S.nodeSize,
+                    height: S.nodeSize,
                 },
             },
             {
@@ -61,15 +67,15 @@ function render(snapshot) {
                 style: {
                     'background-color': '#292e42',
                     'background-opacity': 0.25,
-                    'border-width': 1.5,
-                    'border-color': '#414868',
-                    'border-opacity': 0.5,
+                    'border-width': BORDERS.file,
+                    'border-color': '#565f89',
+                    'border-opacity': 0.6,
                     'border-style': 'dashed',
                     shape: 'round-rectangle',
-                    padding: 50,
+                    padding: S.containerPadding,
                     'text-valign': 'top',
                     'text-halign': 'center',
-                    'font-size': '11px',
+                    'font-size': Math.max(S.currentFontSize, 11) + 'px',
                     color: '#565f89',
                     'font-weight': 'bold',
                     label: 'data(label)',
@@ -82,15 +88,15 @@ function render(snapshot) {
                 style: {
                     'background-color': '#1a1b2e',
                     'background-opacity': 0.35,
-                    'border-width': 2,
+                    'border-width': BORDERS.folder,
                     'border-color': '#3b4261',
-                    'border-opacity': 0.6,
+                    'border-opacity': 0.7,
                     'border-style': 'solid',
                     shape: 'round-rectangle',
-                    padding: 60,
+                    padding: S.folderPadding,
                     'text-valign': 'top',
                     'text-halign': 'center',
-                    'font-size': '12px',
+                    'font-size': Math.max(S.currentFontSize + 2, 12) + 'px',
                     color: '#737aa2',
                     'font-weight': 'bold',
                     label: 'data(label)',
@@ -118,7 +124,7 @@ function render(snapshot) {
             },
             {
                 selector: ':selected',
-                style: { 'border-width': 3, 'border-color': '#e0af68' },
+                style: { 'border-width': BORDERS.select, 'border-color': '#e0af68' },
             },
         ],
     });
@@ -166,9 +172,9 @@ function render(snapshot) {
     });
 
 
-    // Double-tap background → unfocus all
+    // Double-tap background → unfocus all + fit view
     cy.on('dblclick', function (evt) {
-        if (evt.target === cy) unfocusAll();
+        if (evt.target === cy) { unfocusAll(); cy.fit(cy.elements(), 50); }
     });
 
     // Hover effects (skip containers)
@@ -185,23 +191,10 @@ function render(snapshot) {
     var dismissBtn = document.querySelector('.focus-dismiss');
     if (dismissBtn) dismissBtn.onclick = unfocusAll;
 
-    // ── Font size slider ──
-    var range = document.getElementById('font-range');
-    if (range) {
-        range.value = S.currentFontSize;
-        document.getElementById('font-val').textContent = S.currentFontSize;
-        range.oninput = function () {
-            S.currentFontSize = parseInt(this.value);
-            document.getElementById('font-val').textContent = S.currentFontSize;
-            S.cy.style()
-                .selector('node[_isFileContainer]')
-                .style('font-size', Math.max(S.currentFontSize, 11) + 'px')
-                .selector('node[_isFolder]')
-                .style('font-size', Math.max(S.currentFontSize + 2, 12) + 'px')
-                .update();
-            if (S.labelOverlay) S.labelOverlay.updatePositions();
-        };
-    }
+    // ── Sidebar parameter controls (font, sizing, layout sliders) ──
+    // All slider wiring lives in controls.js so every parameter is linked
+    // in one place and can be reset from an authoritative default set.
+    initControls();
 
     // ── Clear buttons for search boxes ──
     document.querySelectorAll('.clear-btn').forEach(function (btn) {
@@ -295,6 +288,10 @@ function render(snapshot) {
 // ── Init ────────────────────────────────────────────────────────────
 
 S.cy = null;
+
+// Let controls.js rebuild the scene after a detail-level change
+// (folder/file/flat) without a reload.
+S.rebuild = function () { if (S.snapshot) render(S.snapshot); };
 
 fetch('graph.json')
     .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })

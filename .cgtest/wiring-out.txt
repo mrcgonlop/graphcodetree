@@ -1,0 +1,21 @@
+# index.html declares 67 ids, 21 range sliders, 5 preset buttons
+# selects: engine-select=hierarchy|cose|grid|breadthfirst  detail-select=full|files|flat
+# initControls() ran in 114ms
+   52 getElementById lookups, 0 of them missing from index.html
+
+## moving every slider (engine = hierarchy)
+   nodeSize 40 -> 80
+   gaps 24/28/36/64/1.7 -> 80/80/160/240/3
+   extent 2967x1878 -> 14968x3377
+   HUD: zoom 1 · extent 14968×3377 u node 80u → 80.00px · label 24px (label/node 0.3×) tree 5 lvls · 35 boxes · 391 symbols · cell ≈160u nodes 426 · hierarchy · full · DOM labels
+   FAIL  returning to the tree engine reproduces the same extent (deterministic)  [14834x3361 vs 14968x3377]
+
+## clicking every preset button
+   tree (compact)       engine=hierarchy    extent=5893x3632
+   tree (roomy)         engine=hierarchy    extent=6065x4770
+   cose defaults        engine=cose         extent=230992x38186
+   tight                engine=cose         extent=335673x364274
+   loose / legacy bug   engine=cose         extent=273923x218196
+   FAIL  ...and it does re-layout after the 250ms debounce  [238492x91484 -> 238492x91484]
+
+2 CHECK(S) FAILED   (195 assertions)

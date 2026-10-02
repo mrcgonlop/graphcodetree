@@ -19,6 +19,7 @@ export function createLabelOverlays() {
     function build() {
         if (!S.cy) { overlay.innerHTML = ''; return; }
         overlay.innerHTML = '';
+        if (S.nativeLabels) return;   // cytoscape draws the labels itself
         try {
             S.cy.nodes().forEach(function (n) {
                 if (n.style('display') === 'none') return;
@@ -76,6 +77,7 @@ export function createLabelOverlays() {
     /// Lightweight position + opacity sync (no DOM rebuild).
     function updatePositions() {
         if (!S.cy) return;
+        if (S.nativeLabels) return;   // cytoscape draws the labels itself
         try {
             var map = {};
             overlay.querySelectorAll('span').forEach(function (s) { map[s.dataset.nodeId] = s; });

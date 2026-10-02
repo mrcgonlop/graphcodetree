@@ -29,6 +29,24 @@ export const EDGE_COLORS = {
     extends: { color: '#9ece6a', width: 1, style: 'dotted', arrow: false },
 };
 
+// ── Node geometry shared with the layout engine ─────────────────────
+// cytoscape draws a node's border *outside* the width it is given, and a
+// compound node's border outside its padding, so these widths are part of
+// the geometry: hierarchy.js predicts a box's size from them (symbol =
+// nodeSize + symbol border, box = children + 2*(padding + border)). Kept
+// here so the stylesheet (main.js) and the engine (layout.js) can never
+// disagree about what a node measures.
+export const BORDERS = {
+    symbol: 2,
+    file: 1.5,
+    folder: 2,
+    // Selection highlight. cytoscape draws this outside the border, so a
+    // selected node is 2u wider than the engine's model for it — positions
+    // do not depend on it (nothing re-measures), but it is why a selected
+    // node can look 1u snugger against its neighbours.
+    select: 3,
+};
+
 export const KIND_ORDER = [
     'function', 'method', 'struct', 'enum', 'enum_variant',
     'trait', 'impl_block', 'module', 'type_alias',

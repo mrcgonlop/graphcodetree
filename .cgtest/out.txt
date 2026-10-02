@@ -1,0 +1,43 @@
+# cytoscape 3.34.3
+# snapshot: 393 nodes / 2252 edges
+# nodeSize=40 filePad=15 folderPad=20 gaps=24/28/36/64 aspect=1.7 label=10px
+
+## sizing probe
+   symbol box 44 x 44   (expect 44)
+   file   box 77.5 x 77.5
+   folder box 253.5 x 253.5
+
+## detail = full (folder -> file -> symbol)
+   stats {"engine":"hierarchy","symbols":391,"boxes":35,"levels":5,"cell":64,"w":3035,"h":1916}
+   boxes checked 35  sibling pairs 5652  levels 6
+
+## same graph / cose (force-directed), for comparison
+   cose took 487ms
+
+## detail = files
+   stats {"engine":"hierarchy","symbols":391,"boxes":21,"levels":1,"cell":64,"w":2708,"h":1294}
+   extent 2708 x 1294u
+
+## detail = flat
+   stats {"engine":"hierarchy","symbols":391,"boxes":0,"levels":0,"cell":64,"w":2656,"h":1160}
+   extent 2656 x 1160u
+
+## fit-to-view readability (1280x760 viewport; labels are DOM overlays at a fixed 10px)
+   hierarchy extent 3035 x 1916u   zoom 0.397   node 15.9px   label/node 0.63x
+   cose      extent 141729 x 29120u   zoom 0.009   node 0.4px   label/node 27.68x
+
+## largest boxes in the tree
+     3035 x  1916u   folder root
+     2991 x  1872u   folder crates
+     2002 x  1025u   folder ir
+     1958 x   981u   folder src
+     1231 x   739u   folder extract
+     1187 x   695u   folder src
+
+## presets
+
+ALL CHECKS PASSED   (28 assertions)
+worst sibling gap 24.00u   min symbol gap 24.00u   worst box-inset error 2.00u   worst centring error 0.00u   levels 6
+observed inset per box style (tight = nearest child to the edge, loose = furthest):
+   pad 20 + border 2  ->  tight 22u, loose 22u  over 14 boxes
+   pad 15 + border 1.5  ->  tight 16.75u, loose 16.75u  over 42 boxes
