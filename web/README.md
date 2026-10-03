@@ -1,12 +1,16 @@
 # The web view
 
-Two standalone viewers live in this folder. Both are **plain static files**: no
-build step, no bundler, no `npm install`. Cytoscape.js is loaded from a CDN and
-the data is a single `graph.json` sitting next to the page.
+Pages here are **plain static files**: no build step, no bundler, no
+`npm install`. Cytoscape.js is loaded from a CDN and the data is a single
+`graph.json` sitting next to the page. There are two viewer *implementations* —
+`web/refactor/app/*.js` (the current one) and the legacy single-file
+`web/demo/index.html` — and two pages that use the first one: this repo's
+snapshot, and the Python demo.
 
 | Path | What it is | State |
 |------|------------|-------|
 | `web/refactor/` | Modular ES-module viewer (`app/*.js`): deterministic containment layout, focus mode with direction colours, details panel. Reads `web/refactor/graph.json`. | **Current** — this is the one under development |
+| `web/python-demo/` | The refactor viewer re-pointed at a **Python** snapshot — a committed extract of an `agx-emulsion` checkout (41 files walked / 273 defs / 83 cross-file calls). Its `index.html` is a copy of the refactor page whose assets point one folder up, and it fetches its own `graph.json`. | Demo — shows the extractor's Python half in the browser |
 | `web/demo/index.html` | The original single-file visualizer (~35 KB, CSS + JS inline). Reads `web/demo/graph.json`. | Legacy, frozen for reference |
 | `web/*.py` | One-off regex patch scripts that used to edit `web/demo/index.html` by hand (`update_frontend.py`, `fix_frontend.py`, `analyze_callsites.py`). | Historical, not part of any build |
 
@@ -16,8 +20,9 @@ the data is a single `graph.json` sitting next to the page.
 # 1. Generate the snapshot the viewer reads (repo root).
 cargo run --release -p cg-cli -- enrich . --output web/refactor/graph.json
 
-# 2. Serve it. `fetch('graph.json')` needs an http:// origin, so opening
-#    index.html from the filesystem shows "Error loading graph.json".
+# 2. Serve it. The viewer is an ES module and reads graph.json with fetch();
+#    a file:// origin permits neither, so a double-clicked index.html shows
+#    the sidebar over an empty canvas. Both pages detect that and say so.
 python -m http.server 8000
 
 # 3. Open http://localhost:8000/web/refactor/
@@ -30,6 +35,54 @@ The legacy demo viewer reads `web/demo/graph.json`, which `codegraph enrich`
 writes when you pass `--demo` (the path is currently hard-coded to
 `web/demo/graph.json`, so the refactor viewer has to be pointed at with
 `--output`).
+
+### The Python demo page
+
+`web/python-demo/` is the *same* viewer on a **Python** snapshot — the
+`agx-emulsion` checkout, which lives outside this repo — so the extractor's
+multi-language half is visible in the browser. It has its own `graph.json`
+next to its page, and that page's assets point one folder up
+(`../refactor/…`), so only the data differs. Regenerate it from the
+checkout's **parent** folder, which keeps the keys relative to the project
+(the tree's root becomes the project folder):
+
+```powershell
+$repo = 'D:\proyects\graphcodetree'
+$proj = 'C:\Users\mrcgo\Desktop\prog\python\agx-emulsion'   # parent of agx-emulsion
+
+cargo build --release --manifest-path "$repo\Cargo.toml" -p cg-cli
+Push-Location $proj
+& "$repo\target\release\codegraph.exe" enrich agx-emulsion --output "$repo\web\python-demo\graph.json"
+Pop-Location
+```
+
+Then http://localhost:8000/web/python-demo/ (same server as above). What that
+extract looks like: 273 defs in 34 of the 41 files it walks — the other seven
+define nothing (seven files are empty, `scanner.py` is commented out,
+`make_profiles.py` is module-level script code), and a box only exists for a
+file that contributes a def. Two labels are worth knowing before comparing
+the two pages: Python qualified names use `.` (`AgXPhoto.develop`) where Rust
+uses `::`, and `shortLabel()` only splits on `::`, so the dots stay visible.
+
+The calls in it are worth a paragraph of their own. The extractor wires only
+the calls it can see *inside one file*, so every edge that crosses a file
+boundary — 83 `calls`, and the 26 `data_flow` edges that follow them — was
+added afterwards by `cg-enrich`'s `CallGraphEnricher`, from the caller's own
+import records. Hints from Python are dotted (`pkg.mod.helper`), a spelling
+that resolver only learnt later on: it used to split them on Rust's `::`, so
+this snapshot showed 196 calls, every one of them inside a single file. Pinning
+that count is what `.cgtest/python-demo.mjs` is for — no picture distinguishes
+"calls resolved across files" from "calls that never left their file".
+
+The 100 `imports` edges are still not drawn, and that is a different gap: they
+start at the importing *file*, and `to_snapshot()` exports only definitions, so
+`builder.js` cannot find the source endpoint and drops the edge. Fixing it means
+mapping a file-keyed endpoint onto the viewer's `file:` container.
+
+The export is **not byte-stable** — the store's maps decide the order of
+`nodes`/`edges` — so regenerating rewrites the file. Keep this snapshot a real
+one, like the refactor snapshot; `.cgtest/python-demo.mjs` asserts the
+contents rather than the bytes.
 
 ## Input format — `graph.json`
 
@@ -338,12 +391,13 @@ palette and lives in `style.css`.
 
 ## Tests
 
-Two Node harnesses live in `.cgtest/` and run the **real app modules against the
+Three Node harnesses live in `.cgtest/` and run the **real app modules against a
 real `graph.json`** inside headless cytoscape (`.cgtest/cytoscape.min.cjs`):
 
 ```powershell
-node --experimental-default-type=module .cgtest/validate.mjs   # layout invariants (44 assertions)
-node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focus, metadata, palette (252 assertions)
+node --experimental-default-type=module .cgtest/validate.mjs     # layout invariants (44 assertions)
+node --experimental-default-type=module .cgtest/wiring.mjs       # UI wiring, focus, metadata, palette (252 assertions)
+node --experimental-default-type=module .cgtest/python-demo.mjs  # the Python snapshot: keys, cross-file calls, builder, layout, page copy (77 assertions)
 ```
 
 - `validate.mjs` drives `state.js`, `builder.js`, `layout.js` and `hierarchy.js`
@@ -362,15 +416,67 @@ node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focu
   that a box is named *once* (the overlay's span while the overlay is on, the
   native label when the checkbox hands the name over), including the root box,
   which has no `_filePath` to take a basename from.
+- `python-demo.mjs` exists because the demo page is a *copy* of `index.html` and
+  its snapshot is one the other two harnesses never load. It asserts the Python
+  snapshot's keys and `stats` block, counts the calls that cross a file boundary
+  (the enricher's work, and the one thing a screenshot cannot show), runs the
+  real `builder.js` at all three detail levels and the real hierarchy layout over
+  that tree, then parses both pages and fails if their ids, sliders (with bounds),
+  selects or preset buttons differ — and if any local reference on the demo page
+  stops resolving. It also pins the inline boot guard that both pages carry (both
+  silent-empty-canvas cases, see below) and requires the two copies of it to stay
+  textually identical.
 
-Both print `FAIL <label>` per failing check and exit non-zero. Convention after
-touching `web/refactor/**`: run both, and for a guard that is *supposed* to
-catch something, verify it bites by mutating the code so the check must fail,
-then revert the mutation.
+All three print `FAIL <label>` per failing check and exit non-zero. Convention
+after touching `web/refactor/**` or `web/python-demo/**`: run all three, and for
+a guard that is *supposed* to catch something, verify it bites by mutating the
+code so the check must fail, then revert the mutation.
 
-`wiring.mjs` reads `web/refactor/graph.json`, so regenerating that file changes
-what is asserted (node/edge counts, label rules). Keep it a real snapshot of
-this repo; write throwaway snapshots elsewhere.
+`wiring.mjs` reads `web/refactor/graph.json` and `python-demo.mjs` reads
+`web/python-demo/graph.json`, so regenerating either changes what is asserted
+(node/edge counts, label rules). Keep both real snapshots — of this repo and of
+the Python checkout; write throwaway snapshots elsewhere.
+
+### Two ways the page silently shows an empty canvas
+
+Both `index.html` files carry the *same* inline guard, because two completely
+different misconfigurations look identical — a live sidebar above a blank canvas,
+with no error shown anywhere:
+
+1. **A `file://` origin.** Browsers run neither ES modules nor `fetch()` there,
+   so `main.js` never executes at all. Detected synchronously, at load.
+2. **A server rooted at the page's own folder.** The pages take their code from a
+   sibling folder (`../refactor/…`) and their data from next to themselves, so
+   `python -m http.server 8000 --directory web/python-demo` 404s the module
+   script and the graph never appears. Only the repository root serves both.
+
+Case 2 can only be spotted by *absence*, so the guard arms a timer: `main.js`
+writes `#stats` the moment the snapshot arrives, which means a `#stats` still
+holding `Loading…` after a few seconds proves nothing ever started. The guard
+then prints the command that fixes it, in the details panel. It has to be a plain
+`<script>` — a module script would be blocked by the very rule case 1 detects,
+and `main.js` never gets to run — and the two copies are byte-identical (asserted
+by `python-demo.mjs`).
+
+That case *can* be checked without a browser (the harnesses assert the guard is
+present and identical on both pages), but a real boot was verified too — Edge
+and Chrome both work headlessly (found at `C:\Program Files\Google\Chrome\
+Application\chrome.exe`):
+
+```powershell
+python -m http.server 8123 --directory .     # in another shell, repo root
+& $chrome --headless=new --virtual-time-budget=10000 `
+    --dump-dom 'http://127.0.0.1:8123/web/python-demo/'
+```
+
+The dump is the DOM *after* the page has run, so it shows `#stats` filled with
+the snapshot's own numbers and three `<canvas>` elements inside
+`#graph-container` — i.e. the viewer booted on the Python tree. Add
+`--screenshot=shot.png --window-size=1600,900` to a second run if you want to
+look at the boxes. Pointing the server at `web/python-demo` itself (`--directory
+web/python-demo`, then `http://127.0.0.1:8123/`) reproduces case 2: the same dump
+then shows `Loading…`, zero canvases and the guard's explanation; a `file://` URL
+shows the other message.
 
 ### What the harnesses cannot see
 
@@ -385,7 +491,15 @@ cheatsheet above doubles as a manual smoke-test list.
   jump-to-source editor (Phase 4 in the root README).
 - **No live updates.** `graph.json` is fetched once; the WebSocket delta path
   (`cg-server`) does not exist yet.
-- **Single-language.** `lang` is `rust` for every node today. When extraction
-  goes multi-language the viewer wants a language badge and filter, and
-  per-language colours — tracked in [../docs/NEXT-SESSION.md](../docs/NEXT-SESSION.md).
+- **No language badge or filter.** Both languages extract and render now — the
+  refactor page shows this Rust repo, `web/python-demo/` shows a Python
+  checkout — but the viewer draws no `lang` badge, has no per-language filter,
+  and colours by `kind` only. The sidebar's counters are the cross-language
+  vocabulary (`function_count`, `calls_edge_count`, …), so a Python snapshot
+  reports `0 structs / 0 traits / 0 impls` by design. Tracked in
+  [../docs/NEXT-SESSION.md](../docs/NEXT-SESSION.md).
+- **A file that defines nothing gets no box.** File containers are built from
+  the defs a file contributes, and the CLI skips empty files, so a def-less
+  file is invisible in the tree: the Python demo walks 41 files and draws 34
+  file boxes.
 - `web/demo/` is kept for comparison only; new work belongs in `web/refactor/`.

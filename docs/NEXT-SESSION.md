@@ -259,7 +259,7 @@ anchors, not contracts.
 | file discovery | `.rs` only, `Lang::Rust` hard-coded per file | `crates/cli/src/main.rs:141-173`, `177-247` |
 | module resolution | `foo.rs` / `foo/mod.rs` | `crates/enrich/src/import_resolver.rs:49-70`, `143-165` |
 | import → qualified name | strips `crate`/`self`/`super`, joins with `::` | `import_resolver.rs:135-141` |
-| cross-file call resolution | `strip_crate_prefix`, "hunt every `ImplBlock` for a method with this name" | `crates/enrich/src/call_graph.rs:135-176` |
+| cross-file call resolution | language-aware since R2 learnt Python: Rust `strip_crate_prefix` + qualified-name lookup, Python module paths resolved through the caller's `ImportRecord`s (`Dialect`, `ModuleIndex`) | `crates/enrich/src/call_graph.rs` |
 | stats | `match node.kind` counters | `crates/extract/src/snapshot.rs:55-77` |
 | vocabulary gaps | no `NodeKind::Class`; `Visibility` has only `private`/`crate`/`public` | `crates/ir/src/node.rs:11-38` |
 
@@ -463,12 +463,17 @@ is proven byte-for-byte in "Proof that the Rust path did not change".
       `.`-joined, relative dots for Python; `./`, `../` for JS).
 - [ ] `import_resolver.rs:148-165` and `find_module_node` hard-code `Lang::Rust`
       in the key they look up — take the language from the importing file.
-- [ ] `call_graph.rs`: `strip_crate_prefix` becomes a per-language normaliser
-      (`::`→`.` for Python/JS, drop `crate`/`self`/`super` only for Rust);
-      `resolve_method`'s "hunt all `ImplBlock`s" is a Rust-only heuristic — for
-      Python/JS, methods hang off a `Struct`/class container, so search the
-      receiver type's members (via `contains`) first and keep the global hunt as
-      a fallback.
+- [x] `call_graph.rs`: done for Rust **and** Python — a call site's language and
+      file now come from its `Anchored` key (`Site`), the hint is split with the
+      language's own separator (`Dialect`: `::` for Rust, `.` for Python, which
+      also keeps `crate`/`self`/`super` stripping Rust-only), and Python's
+      dotted import hints are resolved through the calling file's
+      `ImportRecord`s into a real file (`ModuleIndex`: module path → file, with
+      relative `.`/`..` handled). `resolve_method` searches the imported
+      module's or class's members before the old global hunt, which stays as the
+      Rust fallback. JavaScript is the remaining case: `Dialect` needs its
+      `.`/`./`-relative spelling and the class-member search is already in
+      place.
 - [ ] `DataFlowEnricher` should need no change (it reads `flows_from` off call
       sites), but its Python/JS producer side does: the binding tracker in the
       walker must understand Python assignment (`x = f()`) and JS
@@ -683,11 +688,13 @@ exist now** (1–3 and 5 are asserted by
    beyond `PROFILES` + the manifest. Anything JS needs beyond the existing hooks
    is a real design gap; `arrow_function`/D6 and `export`/visibility are the
    likely pressure points.
-6. Phase 5 (enrichers) matters sooner for Python than for JS: `import_resolver.rs`
-   and `call_graph.rs` still assume Rust (`Lang::Rust` lookups, `::` splitting,
-   `mod`-file resolution), so `from a.b import c` produces no cross-file edge yet
-   even though extraction records the import. Phase 6 (viewer + docs) last — it is
-   what makes the result *usable* rather than merely extracted.
+6. Phase 5 (enrichers) matters sooner for Python than for JS. `call_graph.rs` is
+   done — the committed Python snapshot now carries 83 cross-file `calls` (and 26
+   cross-file `data_flow`) where it used to carry none — but `import_resolver.rs`
+   still assumes Rust (`Lang::Rust` key lookups, `::`-joined paths, `mod`-file
+   resolution), so its edges are found by bare-name fallback rather than by
+   module path. Phase 6 (viewer + docs) last — it is what makes the result
+   *usable* rather than merely extracted.
 
 Before starting a phase, all four of these must be green; after Phase 3 they are
 `cargo test --workspace` (**27 passed / 1 ignored**),

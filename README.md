@@ -42,7 +42,7 @@ file edit ------>|  cg-extract      |--- KeyOp[] (NodeKey/EdgeKey-based, self-co
 |-------|-------|------|--------|-------------|
 | **Schema** | `cg-ir` | `crates/ir/` | ✅ Complete | NodeKind, EdgeKind (incl. DataFlow), NodeKey, EdgeKey, Span, NodeAttrs, GraphDelta, GraphOp, EditIntent, IntentOutcome, ViewSpec — full serde round-trip, zero runtime deps |
 | **Structure** | `cg-extract` | `crates/extract/` | 🟡 Mostly done | Rust tree-walk extractor: two-pass def registration + call resolution, stable keyed identity, same-file scope resolution, import flattening, intra-function data flow tracking (`flows_from` annotation on call sites), incremental `diff()` |
-| **Semantic** | `cg-enrich` | `crates/enrich/` | 🟡 Mostly done | `Enricher` trait + `run_pipeline()`, four enrichers (`ImportResolver`, `CallGraphEnricher`, `ImplTraitEnricher`, `DataFlowEnricher` — produces `DataFlow` edges from `flows_from` annotations) |
+| **Semantic** | `cg-enrich` | `crates/enrich/` | 🟡 Mostly done | `Enricher` trait + `run_pipeline()`, four enrichers (`ImportResolver`, `CallGraphEnricher`, `ImplTraitEnricher`, `DataFlowEnricher` — produces `DataFlow` edges from `flows_from` annotations); `CallGraphEnricher` is language-aware, resolving Python's dotted import hints through the calling file's `ImportRecord`s as well as Rust `::` use paths |
 | **Store** | `cg-store` | `crates/store/` | ✅ Complete | Monotonic interning, `ingest()`, `apply()`, query methods, `to_snapshot()` + `snapshot(&ViewSpec)`, 6 store + 3 intern tests |
 | **Intents** | `cg-intent` | ❌ Not started | Empty | EditIntent validation rules, span→text compilation, legality table |
 | **Projection** | `cg-project` | 🔴 Stubs only | Stubs | `DetailLevel` enum + `render_map()` signature exist, no implementation |
@@ -128,7 +128,7 @@ The file is **documentation, not a driver**: extraction today is the shared AST 
 
 ## Planned Languages
 
-The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScript**, **TSX**, **JavaScript**, **Go**, **C**, **C++**, **Java**. Only Rust is extracted today. Python and JavaScript are the next two, and the point of that work is to make every tree-sitter language a bounded addition rather than a new extractor: the plan, the design seam and the per-language notes live in [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md).
+The `Lang` enum already includes variants for: **Rust**, **Python**, **TypeScript**, **TSX**, **JavaScript**, **Go**, **C**, **C++**, **Java**. Rust and Python are extracted today — one shared walker driven by two profiles (`crates/extract/src/rust.rs`, `crates/extract/src/python.rs`), with a committed Python snapshot in [`web/python-demo/`](web/python-demo/). JavaScript is next, and the point of that work is to make every tree-sitter language a bounded addition rather than a new extractor: the plan, the design seam and the per-language notes live in [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md).
 
 ## Web view
 
@@ -145,9 +145,11 @@ python -m http.server 8000     # then open http://localhost:8000/web/refactor/
 ```
 
 Full documentation — the `graph.json` schema, the layout invariants, the module
-map, the colour reference, the interaction cheatsheet and the two Node test
+map, the colour reference, the interaction cheatsheet and the three Node test
 harnesses — is in [web/README.md](web/README.md). `web/demo/` is the older
-single-file viewer, kept for reference.
+single-file viewer, kept for reference; `web/python-demo/` is the same refactor
+viewer on a Python extract (41 files, 273 defs, 83 of its calls crossing a
+file) committed so the second language can be browsed without any toolchain.
 
 ## Roadmap
 
@@ -166,7 +168,7 @@ single-file viewer, kept for reference.
 - [x] Full pipeline: extract → ingest → enrich → snapshot with `codegraph enrich`
 - [x] Cross-file module resolution (`mod foo;` → `foo.rs` / `foo/mod.rs`)
 - [x] Cross-file import resolution (qualified-name lookup across files)
-- [x] Cross-file call graph enrichment (resolves `imported`, `path_unresolved`, `method_unresolved` call sites)
+- [x] Cross-file call graph enrichment (resolves `imported`, `path_unresolved`, `method_unresolved` call sites — in both languages: Rust `::` use paths and Python's dotted module imports, the latter through the caller's `ImportRecord`s)
 - [x] **Depth / nesting level**: each definition node carries a `depth: u32` field (top-level = 0, nested inside modules/impls = 1, fields/variants inside structs/enums = 2, etc.), used for proportional dimming during focus mode in the visualizer
 - [ ] **Multi-language extraction**: Python and JavaScript first, then any tree-sitter grammar — see [docs/NEXT-SESSION.md](docs/NEXT-SESSION.md)
 - [ ] Crate-graph builder (external dependency discovery from `Cargo.toml`)

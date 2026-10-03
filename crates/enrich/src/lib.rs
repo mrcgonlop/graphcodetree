@@ -10,7 +10,7 @@
 //! | Step | Enricher | What it adds |
 //! |------|----------|-------------|
 //! | R1   | `ImportResolver` | `Imports` edges + `Contains` for module hierarchy |
-//! | R2   | `CallGraphEnricher` | Cross-file `Calls` edges via import+qualified lookup |
+//! | R2   | `CallGraphEnricher` | Cross-file `Calls` edges via import+qualified lookup — language-aware, since a hint is written in its language's spelling: Rust `::` use paths, Python dotted module paths resolved through the caller's `ImportRecord`s |
 //! | R3   | `ImplTraitEnricher` | `Implements`/`Inherits` edges from impl blocks |
 //! | R4   | `DataFlowEnricher` | `DataFlow` edges tracking value provenance between definitions |
 //! | R5+  | Type resolver | Method dispatch, dataflow, generics |

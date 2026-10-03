@@ -143,10 +143,17 @@ impl GraphStore {
                 if !self.nodes.contains_key(&edge.source)||!self.nodes.contains_key(&edge.target){
                     continue;
                 }
-                self.edges.insert(edge.id, edge.clone());
-                self.out_edges.entry(edge.source).or_default().push(edge.id);
-                self.in_edges.entry(edge.target).or_default().push(edge.id);
-                out.push(GraphOp::UpsertEdge(edge.clone()));
+                // Never trust the caller's id guess. An enricher counts the
+                // edges that are alive, but ids also cover ops rejected just
+                // above (and ids are not recycled), so a guessed id can land on
+                // an edge someone else already owns — and inserting there would
+                // silently replace a real edge with a new one.
+                let id=self.free_edge_id(edge.id);
+                let e=Edge{id,..edge.clone()};
+                self.edges.insert(id,e.clone());
+                self.out_edges.entry(e.source).or_default().push(id);
+                self.in_edges.entry(e.target).or_default().push(id);
+                out.push(GraphOp::UpsertEdge(e));
             }
             GraphOp::RemoveNode{id}=>{
                 if self.nodes.remove(id).is_some(){
@@ -279,6 +286,15 @@ impl GraphStore {
 
     pub fn node_count(&self)->usize{self.nodes.len()}
     pub fn edge_count(&self)->usize{self.edges.len()}
+
+    /// `preferred` when nothing holds it, else one past the highest id in use.
+    /// Callers that invent their own ids (enrichers) count *live* edges, which
+    /// is not the same as the highest id, so the check is on the id itself.
+    fn free_edge_id(&self,preferred:EdgeId)->EdgeId{
+        if !self.edges.contains_key(&preferred){return preferred;}
+        EdgeId(self.edges.keys().map(|e|e.0).max().unwrap_or(0)+1)
+    }
+
     pub fn interner(&self)->&Interner{&self.interner}
 }
 
@@ -331,6 +347,29 @@ mod tests {
             ops:vec![GraphOp::UpsertEdge(Edge{id:EdgeId(99),kind:EdgeKind::Calls,
                 source:fid,target:f2id,span:None,weight:1})]}).unwrap();
         assert_eq!(r.version,2);assert_eq!(s.edge_count(),1);
+    }
+
+    /// An enricher guesses its edge ids from the number of *live* edges, which
+    /// is not the highest id in use once any op has been rejected. A guess that
+    /// lands on an edge someone already owns must not replace it.
+    #[test]fn apply_rehomes_a_colliding_edge_id(){
+        let mut s=GraphStore::new();
+        let fk=mkfp("src/lib.rs");let fk2=mkfn("src/lib.rs","hello");
+        s.ingest(0,&[KeyOp::UpsertNode{key:fk.clone(),spec:mkn(NodeKind::File,"lib.rs",false)},
+            KeyOp::UpsertNode{key:fk2.clone(),spec:mkn(NodeKind::Function,"hello",true)},
+            KeyOp::UpsertEdge{key:EdgeKey{kind:EdgeKind::Contains,source:fk.clone(),
+                target:fk2.clone(),ordinal:0},spec:mke(EdgeKind::Contains,1)}],&[],&[]).unwrap();
+        let fid=s.lookup_node(&fk).unwrap();let f2id=s.lookup_node(&fk2).unwrap();
+        // The ingested `contains` edge owns EdgeId(1); the enrichment delta
+        // asks for EdgeId(1) again.
+        let r=s.apply(&GraphDelta{base_version:1,version:2,
+            ops:vec![GraphOp::UpsertEdge(Edge{id:EdgeId(1),kind:EdgeKind::Calls,
+                source:fid,target:f2id,span:None,weight:1})]}).unwrap();
+        assert_eq!(s.edge_count(),2,"both edges survive");
+        assert_eq!(s.edges_of_kind(EdgeKind::Contains).len(),1,"the contains edge is intact");
+        assert_eq!(s.edges_of_kind(EdgeKind::Calls).len(),1,"the calls edge was added");
+        let GraphOp::UpsertEdge(ref e)=r.ops[0]else{panic!("expected an upsert")};
+        assert_ne!(e.id,EdgeId(1),"the reported edge carries the id it really got");
     }
 
     #[test]fn version_mismatch_rejected(){

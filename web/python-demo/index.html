@@ -1,20 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<!-- ── Python demo ─────────────────────────────────────────────────────────
+     The same viewer as `web/refactor/`, pointed at a different snapshot: the
+     `graph.json` next to this file is an extract of a real Python checkout
+     (agx-emulsion), not of this Rust repo. Only the asset references differ —
+     they point one folder up, at `../refactor/` — because `main.js` fetches
+     `graph.json` relative to the *page*. The markup below is deliberately a
+     copy: `.cgtest/python-demo.mjs` parses both pages and fails if their
+     control declarations drift apart. Where the original writes its
+     multiplication sign, magnifier icon or ballot X glyphs this page spells
+     them as entities, so a console round-trip cannot mangle them.
+     ──────────────────────────────────────────────────────────────────────── -->
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>CodeGraph Snapshot</title>
+<title>CodeGraph Snapshot &mdash; Python (agx-emulsion)</title>
 <script src="https://unpkg.com/cytoscape/dist/cytoscape.min.js"></script>
-<link rel="stylesheet" href="style.css" />
+<link rel="stylesheet" href="../refactor/style.css" />
 </head>
 <body>
 
 
 <div id="sidebar">
   <header>
-    <h1>⬡ CodeGraph</h1>
-    <p>Static snapshot viewer</p>
-    <div id="stats">Loading…</div>
+    <h1>&#x2B21; CodeGraph</h1>
+    <p>Python snapshot &mdash; agx-emulsion</p>
+    <div id="stats">Loading&hellip;</div>
   </header>
   <div id="filters"></div>
   <div id="depth-selector"></div>
@@ -68,7 +79,6 @@
         <button id="relayout-btn" class="ctrl-btn">Re&#8209;layout</button>
       </div>
     </div>
-
     <div class="param-group">Tree geometry &mdash; containment packing</div>
     <div class="ctrl-group">
       <label>Node gap X</label>
@@ -80,6 +90,7 @@
       <input type="range" id="hier-nodegapy-range" min="0" max="80" value="28" step="2" />
       <span id="hier-nodegapy-val">28</span>
     </div>
+
     <div class="ctrl-group">
       <label>Column gap</label>
       <input type="range" id="hier-colgap-range" min="0" max="160" value="36" step="4" />
@@ -111,19 +122,19 @@
 
   <div id="search-box">
     <div class="search-wrap">
-      <input type="text" id="search" placeholder="Filter nodes by name…" />
-      <button class="clear-btn" data-target="search" tabindex="-1">×</button>
+      <input type="text" id="search" placeholder="Filter nodes by name&hellip;" />
+      <button class="clear-btn" data-target="search" tabindex="-1">&times;</button>
     </div>
     <div class="search-wrap">
-      <input type="text" id="search-path" placeholder="Filter by file path…" list="path-list" />
-      <button class="clear-btn" data-target="search-path" tabindex="-1">×</button>
+      <input type="text" id="search-path" placeholder="Filter by file path&hellip;" list="path-list" />
+      <button class="clear-btn" data-target="search-path" tabindex="-1">&times;</button>
     </div>
     <datalist id="path-list"></datalist>
   </div>
   <div id="focus-indicator">
-    <span>🔍 Focus: </span><span id="focus-label"></span>
+    <span>&#x1F50D; Focus: </span><span id="focus-label"></span>
     <span class="dir-legend"><i class="dir-out"></i>outgoing <i class="dir-in"></i>incoming</span>
-    <span class="focus-dismiss" title="Show all nodes">✕</span>
+    <span class="focus-dismiss" title="Show all nodes">&#x2715;</span>
   </div>
   <div id="node-details">
     <div class="empty">Click a node to see details</div>
@@ -142,7 +153,7 @@
      started", which is what the timer below watches for: main.js writes #stats
      as soon as the snapshot arrives, so "Loading…" still being there means it
      never got that far. Both cases print the command that fixes them.
-     (Kept byte-identical to the copy on web/python-demo/index.html;
+     (Kept byte-identical to the copy on web/refactor/index.html;
      .cgtest/python-demo.mjs checks that.) -->
 <script>
 function cgPageDir() {
@@ -174,6 +185,7 @@ if (location.protocol === 'file:') {
     setTimeout(cgBootHint, 4000);
 }
 </script>
-<script type="module" src="app/main.js"></script>
+<script type="module" src="../refactor/app/main.js"></script>
 </body>
 </html>
+
