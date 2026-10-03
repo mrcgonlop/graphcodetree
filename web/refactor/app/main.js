@@ -1,7 +1,7 @@
 // ── Main entry point ────────────────────────────────────────────────
 
 import { S } from './state.js';
-import { KIND_COLORS, KIND_ORDER, BORDERS } from './constants.js';
+import { KIND_COLORS, KIND_ORDER, BORDERS, LABEL_COLORS } from './constants.js';
 import { esc } from './utils.js';
 import { buildElements } from './builder.js';
 import { refreshVisibility, toggleContainer } from './visibility.js';
@@ -80,7 +80,7 @@ function render(snapshot) {
                     'text-valign': 'top',
                     'text-halign': 'center',
                     'font-size': Math.max(S.currentFontSize, 11) + 'px',
-                    color: '#565f89',
+                    color: '#dde0f1',
                     'font-weight': 'bold',
                     label: 'data(label)',
                     'z-compound-depth': 'bottom',

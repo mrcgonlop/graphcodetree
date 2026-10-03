@@ -1,0 +1,342 @@
+{
+  "nodes": [
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "kind": "class",
+      "label": "Greeter",
+      "ast_kind": "class_definition",
+      "span": {
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "start_byte": 16,
+        "end_byte": 77,
+        "start": {
+          "row": 2,
+          "col": 0
+        },
+        "end": {
+          "row": 4,
+          "col": 26
+        }
+      },
+      "attrs": {
+        "signature": "class Greeter",
+        "visibility": "public",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": ".cgtest\\pyprobe\\hello.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter.hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "hi",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "start_byte": 36,
+        "end_byte": 77,
+        "start": {
+          "row": 3,
+          "col": 4
+        },
+        "end": {
+          "row": 4,
+          "col": 26
+        }
+      },
+      "attrs": {
+        "signature": "def hi(self)",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": ".cgtest\\pyprobe\\hello.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "main",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "start_byte": 81,
+        "end_byte": 130,
+        "start": {
+          "row": 6,
+          "col": 0
+        },
+        "end": {
+          "row": 8,
+          "col": 17
+        }
+      },
+      "attrs": {
+        "signature": "def main()",
+        "visibility": "public",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": ".cgtest\\pyprobe\\hello.py",
+      "depth": 0
+    }
+  ],
+  "edges": [
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter.hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter.hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\pyprobe\\hello.py",
+          "qualified_name": "Greeter.hi",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\pyprobe\\hello.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\pyprobe\\hello.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 1
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\pyprobe\\hello.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 2
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter.hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\pyprobe\\hello.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": ".cgtest\\pyprobe\\hello.py",
+        "start_byte": 102,
+        "end_byte": 111,
+        "start": {
+          "row": 7,
+          "col": 8
+        },
+        "end": {
+          "row": 7,
+          "col": 17
+        }
+      },
+      "weight": 1
+    }
+  ],
+  "file_count": 1,
+  "stats": {
+    "total_nodes": 3,
+    "total_edges": 9,
+    "function_count": 2,
+    "struct_count": 0,
+    "trait_count": 0,
+    "impl_count": 0,
+    "calls_edge_count": 1,
+    "contains_edge_count": 7,
+    "impl_edge_count": 0,
+    "data_flow_edge_count": 0
+  }
+}

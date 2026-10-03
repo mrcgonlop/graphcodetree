@@ -16,7 +16,7 @@ export const KIND_COLORS = {
     type_alias: '#73daca',
     macro: '#f7768e',
     field: '#565f89',
-    file: '#414868',
+    file: '#bbc3ea',
 };
 
 export const EDGE_COLORS = {
@@ -57,6 +57,35 @@ export const DIRECTION_COLORS = {
 /// How a direction is worded and drawn in the details panel.
 export const DIRECTION_NAMES = { out: 'Outgoing', in: 'Incoming' };
 export const DIRECTION_ARROWS = { out: '\u2192', in: '\u2190' };
+
+// ── Label colours ───────────────────────────────────────────────────
+// The text drawn *on* the graph, in one place because two independent paths
+// have to agree about it: the DOM overlay (overlay.js, the default) and
+// cytoscape's own label/color (main.js + controls.js, the *Native labels*
+// checkbox). These were five literals spread over four files and had already
+// drifted apart — the overlay painted the old dark pair on build() and the
+// brighter pair below on the next sync, so a box name changed colour the first
+// time you panned. Tune them here and every path follows.
+//
+// `folder` is the largest text on the canvas (a bold path basename) and `file`
+// sits directly underneath it; `symbol` is the small per-definition name. All of
+// it is painted over a dark halo (LABEL_HALO) on top of the canvas background,
+// so the colours want to be light — the hierarchy between them is carried by
+// size and weight (overlay.js, main.js), not by making one of them dim.
+export const LABEL_COLORS = {
+    // Box names are pure white: the bold, largest text on the canvas, so it is
+    // the one thing that should read at a glance when zoomed out.
+    folder: '#ffffff',
+    file: '#dde0f1',
+    symbol: '#a9b1d6',
+    // The `:412` a DOM label carries when line numbers are on. Part of the
+    // label text, a shade apart so a column of them reads as an index.
+    line: '#b1b8d9',
+};
+
+/// The halo painted behind every DOM-overlay label (overlay.js): two stops of
+/// this at 3px/6px is what keeps a name legible when an edge runs through it.
+export const LABEL_HALO = '#0f0f1a';
 
 // ── Node geometry shared with the layout engine ─────────────────────
 // cytoscape draws a node's border *outside* the width it is given, and a

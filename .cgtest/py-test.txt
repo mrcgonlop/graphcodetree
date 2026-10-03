@@ -1,0 +1,16 @@
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.05s
+     Running unittests src\lib.rs (target\debug\deps\cg_extract-e6514b3802f3e32a.exe)
+
+running 9 tests
+test python::tests::python_and_rust_profiles_do_not_interchange ... ok
+test python::tests::error_recovery_stays_transparent ... ok
+test python::tests::classifies_computed_callees_as_dynamic ... ok
+test python::tests::flattens_every_import_shape ... ok
+test python::tests::tracks_data_flow_across_bindings ... ok
+test python::tests::resolves_same_file_calls_and_records_the_rest ... ok
+test python::tests::extracts_python_structure ... ok
+test python::tests::keys_are_stable_under_body_edits ... ok
+test python::tests::one_directory_two_languages_flattens_without_collisions ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 9 filtered out; finished in 0.01s
+

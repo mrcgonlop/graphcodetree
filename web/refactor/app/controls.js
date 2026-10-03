@@ -5,6 +5,7 @@
 // about instead of guessed.
 
 import { S, resetParams, applyPreset } from './state.js';
+import { LABEL_COLORS } from './constants.js';
 import { runLayout, estimateSpacing } from './layout.js';
 
 // ── Number formatting ───────────────────────────────────────────────
@@ -105,7 +106,12 @@ export function updateMetrics() {
 export function initControls() {
     if (!S.cy) return;
 
-    /// Re-apply every style-driven sizing parameter from state.
+    /// Re-apply every style-driven presentation parameter from state: the
+    /// sizes the layout engine predicts from (see BORDERS) and the label
+    /// colours, which both label paths have to agree on (LABEL_COLORS in
+    /// constants.js). The containers are the two roles that are only declared
+    /// in main.js's initial stylesheet, so re-asserting them here is what
+    /// keeps the native-label path on the same palette as the DOM overlay.
     function applyGraphStyles() {
         S.cy.style()
             .selector('node[_isSymbol]')
@@ -114,9 +120,11 @@ export function initControls() {
             .selector('node[_isFileContainer]')
             .style('padding', S.containerPadding)
             .style('font-size', Math.max(S.currentFontSize, 11) + 'px')
+            .style('color', LABEL_COLORS.file)
             .selector('node[_isFolder]')
             .style('padding', S.folderPadding)
             .style('font-size', Math.max(S.currentFontSize + 2, 12) + 'px')
+            .style('color', LABEL_COLORS.folder)
             .update();
         if (S.labelOverlay) S.labelOverlay.updatePositions();
     }
@@ -131,7 +139,7 @@ export function initControls() {
             .selector('node[_isSymbol]')
             .style('label', S.nativeLabels ? (S.showLineNumbers ? 'data(labelLine)' : 'data(label)') : '')
             .style('font-size', S.currentFontSize + 'px')
-            .style('color', '#a9b1d6')
+            .style('color', LABEL_COLORS.symbol)
             .style('text-valign', 'bottom')
             .style('text-halign', 'center')
             .style('text-margin-y', 4)

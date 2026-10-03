@@ -39,7 +39,7 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 .panel summary::-webkit-details-marker { display: none; }
 .panel summary::before { content: '\25B8  '; color: #565f89; }
 .panel[open] summary::before { content: '\25BE  '; }
-.panel .ctrl-group { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #565f89; margin: 3px 0; }
+.panel .ctrl-group { display: flex; align-items: center; gap: 8px; font-size: 10px; color: #dcdde1; margin: 3px 0; }
 .panel .ctrl-group label { min-width: 92px; }
 .panel .ctrl-group input[type="range"] { flex: 1; accent-color: #7aa2f7; height: 4px; cursor: pointer; }
 .panel .ctrl-group span { font-size: 11px; color: #a9b1d6; min-width: 34px; text-align: right; }
@@ -52,7 +52,7 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 /* Sub-heading that splits a panel into parameter groups (tree geometry,
    cose forces, overlap pass) so the two engines don't look like one
    17-slider soup. */
-.panel .param-group { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; color: #3b4261; margin: 10px 0 5px; padding-top: 8px; border-top: 1px solid #24283b; }
+.panel .param-group { font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.6px; font-weight: 600; color: #f5f5f8; margin: 10px 0 5px; padding-top: 8px; border-top: 1px solid #24283b; }
 .panel .param-group:first-of-type { margin-top: 2px; padding-top: 0; border-top: none; }
 
 #search-box { padding: 8px 18px; border-bottom: 1px solid #2f3346; }
@@ -65,9 +65,11 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 #node-details { flex: 1; overflow-y: auto; padding: 12px 18px; font-size: 12px; line-height: 1.6; }
 #node-details .empty { color: #565f89; font-style: italic; }
 #node-details .node-kind { display: inline-block; padding: 1px 8px; border-radius: 3px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+/* Panel text. These are the sidebar's own colours, tuned here; the text drawn
+   *on the graph* comes from LABEL_COLORS in constants.js. */
 #node-details .node-label { font-size: 15px; font-weight: 600; color: #e0e4f0; margin-bottom: 4px; }
 #node-details .node-signature { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; color: #73daca; background: #1f2335; padding: 6px 10px; border-radius: 4px; margin: 6px 0 10px; white-space: pre-wrap; }
-#node-details .node-file { color: #565f89; font-size: 11px; }
+#node-details .node-file { color: #e9ebf3; font-size: 11px; }
 #node-details .node-doc { color: #9ece6a; margin-top: 6px; font-style: italic; }
 #node-details .node-attrs { color: #565f89; font-size: 11px; margin-top: 6px; }
 #node-details .edge-list { margin-top: 10px; }
@@ -83,13 +85,15 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 #node-details .edge-list .edge-locus { color: #565f89; margin-left: 4px; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; }
 /* A member (a struct field, an impl method) shows its own signature under the
    row, because that is the "class arguments" bit that was missing. */
-#node-details .edge-list .member-sig { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; color: #565f89; padding-left: 14px; white-space: pre-wrap; }
-#graph-container { flex: 1; background: #0f0f1a; position: relative; }
-#graph-container .tooltip { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: #565f89; font-size: 11px; pointer-events: none; }
+#node-details .edge-list .member-sig { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; color: #f4f5f9; padding-left: 14px; white-space: pre-wrap; }
+#graph-container { flex: 1; background: #0f1a12; position: relative; }
+#graph-container .tooltip { position: absolute; bottom: 18px; left: 50%; transform: translateX(-50%); color: #fafafa; font-size: 11px; pointer-events: none; }
 /* The `:412` a DOM label carries when line numbers are on. Part of the label
    text (and so still findable with Ctrl+F), but smaller and dimmer, so a
-   column of them reads as an index instead of as part of the name. */
-#label-overlay .ln { color: #565f89; font-size: 0.85em; margin-left: 1px; }
+   column of them reads as an index instead of as part of the name. Only the
+   sizing lives here — the colour is LABEL_COLORS.line (constants.js), set
+   inline on the span, so every graph-label colour has one source. */
+#label-overlay .ln { font-size: 0.85em; margin-left: 1px; }
 #focus-indicator { display: none; padding: 6px 18px; background: #1f2335; border-bottom: 1px solid #2f3346; font-size: 11px; color: #e0af68; align-items: center; gap: 6px; }
 #focus-indicator.visible { display: flex; }
 #focus-indicator .focus-dismiss { margin-left: auto; cursor: pointer; color: #565f89; font-size: 13px; padding: 0 4px; }
@@ -97,20 +101,20 @@ body { font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; di
 /* The direction legend: the two colours focus.js paints a focused node's own
    edges with (outgoing / incoming), so the star around the node can be read
    without clicking anything. Sentences, not a guess at a hue. */
-#focus-indicator .dir-legend { display: flex; align-items: center; gap: 4px; margin-left: 8px; color: #565f89; font-size: 10px; }
+#focus-indicator .dir-legend { display: flex; align-items: center; gap: 4px; margin-left: 8px; color: #eff1fb; font-size: 10px; }
 #focus-indicator .dir-legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; }
 #focus-indicator .dir-legend .dir-out { background: #7dcfff; }
 #focus-indicator .dir-legend .dir-in { background: #f7768e; }
 .kind-function { background: #7aa2f7; }
-.kind-struct  { background: #9ece6a; }
+.kind-struct  { background: #2fff00; }
 .kind-enum    { background: #bb9af7; }
 .kind-trait   { background: #f7768e; }
 .kind-impl_block { background: #e0af68; }
 .kind-module  { background: #2ac3de; }
 .kind-constant{ background: #ff9e64; }
-.kind-static  { background: #ff9e64; }
+.kind-static  { background: #ff8664; }
 .kind-type_alias { background: #73daca; }
 .kind-macro   { background: #f7768e; }
 .kind-enum_variant { background: #bb9af7; }
 .kind-field   { background: #565f89; }
-.kind-file    { background: #414868; }
+.kind-file    { background: #ffffff; }

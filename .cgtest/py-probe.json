@@ -1,0 +1,17 @@
+{
+  "nodes": [],
+  "edges": [],
+  "file_count": 3,
+  "stats": {
+    "total_nodes": 0,
+    "total_edges": 0,
+    "function_count": 0,
+    "struct_count": 0,
+    "trait_count": 0,
+    "impl_count": 0,
+    "calls_edge_count": 0,
+    "contains_edge_count": 0,
+    "impl_edge_count": 0,
+    "data_flow_edge_count": 0
+  }
+}

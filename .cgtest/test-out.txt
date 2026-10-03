@@ -1,0 +1,31 @@
+   Compiling cg-extract v0.1.0 (D:\proyects\graphcodetree\crates\extract)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.81s
+     Running unittests src\lib.rs (target\debug\deps\cg_extract-e6514b3802f3e32a.exe)
+
+running 17 tests
+test profile::tests::registry_resolves_python_by_lang_and_extension ... ok
+test profile::tests::every_profile_is_self_consistent ... ok
+test profile::tests::unregistered_languages_and_extensions_are_absent_not_panics ... ok
+test profile::tests::registry_resolves_rust_by_lang_and_extension ... ok
+test python::tests::python_and_rust_profiles_do_not_interchange ... ok
+test python::tests::classifies_computed_callees_as_dynamic ... ok
+test python::tests::error_recovery_stays_transparent ... ok
+test python::tests::flattens_every_import_shape ... ok
+test python::tests::tracks_data_flow_across_bindings ... ok
+test rust::tests::tracks_data_flow_across_bindings ... ok
+test python::tests::extracts_python_structure ... ok
+test python::tests::resolves_same_file_calls_and_records_the_rest ... ok
+test rust::tests::extracts_structure ... ok
+test rust::tests::resolves_same_file_calls ... ok
+test python::tests::keys_are_stable_under_body_edits ... ok
+test rust::tests::keys_are_stable_under_body_edits ... ok
+test rust::tests::dogfoods_own_source ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+   Doc-tests cg_extract
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

@@ -1,0 +1,2730 @@
+{
+  "nodes": [
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "frame",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "frame",
+      "ast_kind": "function_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 1171,
+        "end_byte": 1235,
+        "start": {
+          "row": 42,
+          "col": 0
+        },
+        "end": {
+          "row": 44,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "fn frame(text: String) -> String",
+        "visibility": "private",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.__init__",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "__init__",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1031,
+        "end_byte": 1143,
+        "start": {
+          "row": 39,
+          "col": 4
+        },
+        "end": {
+          "row": 41,
+          "col": 28
+        }
+      },
+      "attrs": {
+        "signature": "def __init__(self, radius: float) -> None",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.area",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "area",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1151,
+        "end_byte": 1216,
+        "start": {
+          "row": 43,
+          "col": 4
+        },
+        "end": {
+          "row": 44,
+          "col": 39
+        }
+      },
+      "attrs": {
+        "signature": "def area(self) -> float",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "label_of",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "label_of",
+      "ast_kind": "function_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 1104,
+        "end_byte": 1167,
+        "start": {
+          "row": 38,
+          "col": 0
+        },
+        "end": {
+          "row": 40,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "fn label_of(widget: &Widget) -> String",
+        "visibility": "private",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.sides",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "kind": "field",
+      "label": "sides",
+      "ast_kind": "expression_statement",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1014,
+        "end_byte": 1023,
+        "start": {
+          "row": 37,
+          "col": 4
+        },
+        "end": {
+          "row": 37,
+          "col": 13
+        }
+      },
+      "attrs": {
+        "signature": "sides = 0",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "dump_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "dump_all",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1600,
+        "end_byte": 1835,
+        "start": {
+          "row": 61,
+          "col": 0
+        },
+        "end": {
+          "row": 67,
+          "col": 16
+        }
+      },
+      "attrs": {
+        "signature": "def dump_all(radii: list) -> None",
+        "visibility": "public",
+        "doc": "Top-level driver: one call site per form the profile classifies.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "report_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "report_all",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "start_byte": 351,
+        "end_byte": 532,
+        "start": {
+          "row": 17,
+          "col": 0
+        },
+        "end": {
+          "row": 20,
+          "col": 23
+        }
+      },
+      "attrs": {
+        "signature": "def report_all(shapes: list) -> str",
+        "visibility": "public",
+        "doc": "Summarise every shape and hand back the joined table.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "table",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "table",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "start_byte": 229,
+        "end_byte": 345,
+        "start": {
+          "row": 12,
+          "col": 0
+        },
+        "end": {
+          "row": 14,
+          "col": 26
+        }
+      },
+      "attrs": {
+        "signature": "def table(rows: Iterable[str]) -> str",
+        "visibility": "public",
+        "doc": "Join rows with the module's separator.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape._seen",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "kind": "field",
+      "label": "_seen",
+      "ast_kind": "expression_statement",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 626,
+        "end_byte": 640,
+        "start": {
+          "row": 20,
+          "col": 4
+        },
+        "end": {
+          "row": 20,
+          "col": 18
+        }
+      },
+      "attrs": {
+        "signature": "_seen: int = 0",
+        "visibility": "module",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "label",
+      "ast_kind": "function_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 576,
+        "end_byte": 655,
+        "start": {
+          "row": 20,
+          "col": 4
+        },
+        "end": {
+          "row": 22,
+          "col": 5
+        }
+      },
+      "attrs": {
+        "signature": "pub fn label(&self) -> String",
+        "visibility": "public",
+        "doc": "The widget's display label.",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "describe",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "describe",
+      "ast_kind": "function_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 1024,
+        "end_byte": 1100,
+        "start": {
+          "row": 34,
+          "col": 0
+        },
+        "end": {
+          "row": 36,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "pub fn describe(widget: &Widget) -> String",
+        "visibility": "public",
+        "doc": "Free functions calling each other, so the fixture has a same-file call to resolve in Rust as well as in Python (a receiver call like `widget.label()` stays unresolved — the extractor has no types).",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "kind": "struct",
+      "label": "Widget",
+      "ast_kind": "struct_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 318,
+        "end_byte": 359,
+        "start": {
+          "row": 7,
+          "col": 0
+        },
+        "end": {
+          "row": 9,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "pub struct Widget",
+        "visibility": "public",
+        "doc": "A labelled widget; deliberately mirrors `geometry.Shape`'s shape so a reader can compare the two languages' output side by side.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::name",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "kind": "field",
+      "label": "name",
+      "ast_kind": "field_declaration",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 343,
+        "end_byte": 355,
+        "start": {
+          "row": 8,
+          "col": 4
+        },
+        "end": {
+          "row": 8,
+          "col": 16
+        }
+      },
+      "attrs": {
+        "signature": "name: String",
+        "visibility": "private",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.describe",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "describe",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 720,
+        "end_byte": 844,
+        "start": {
+          "row": 25,
+          "col": 4
+        },
+        "end": {
+          "row": 27,
+          "col": 50
+        }
+      },
+      "attrs": {
+        "signature": "def describe(self) -> str",
+        "visibility": "public",
+        "doc": "One line a reporter can print.",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "impl Widget",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "kind": "impl_block",
+      "label": "impl Widget",
+      "ast_kind": "impl_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 363,
+        "end_byte": 658,
+        "start": {
+          "row": 11,
+          "col": 0
+        },
+        "end": {
+          "row": 23,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "impl Widget",
+        "visibility": "private",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "summarise",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "summarise",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "start_byte": 105,
+        "end_byte": 223,
+        "start": {
+          "row": 7,
+          "col": 0
+        },
+        "end": {
+          "row": 9,
+          "col": 29
+        }
+      },
+      "attrs": {
+        "signature": "def summarise(text: str) -> str",
+        "visibility": "public",
+        "doc": "Wrap a description in the reporter's frame.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "label",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 867,
+        "end_byte": 916,
+        "start": {
+          "row": 30,
+          "col": 4
+        },
+        "end": {
+          "row": 31,
+          "col": 24
+        }
+      },
+      "attrs": {
+        "signature": "def label(self) -> str",
+        "visibility": "public",
+        "extra": {
+          "decorators": [
+            "property"
+          ],
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.describe",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "describe",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1224,
+        "end_byte": 1316,
+        "start": {
+          "row": 46,
+          "col": 4
+        },
+        "end": {
+          "row": 47,
+          "col": 64
+        }
+      },
+      "attrs": {
+        "signature": "def describe(self) -> str",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "_hidden",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "_hidden",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1534,
+        "end_byte": 1594,
+        "start": {
+          "row": 57,
+          "col": 0
+        },
+        "end": {
+          "row": 58,
+          "col": 24
+        }
+      },
+      "attrs": {
+        "signature": "def _hidden(radius: float) -> str",
+        "visibility": "module",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::new",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "new",
+      "ast_kind": "function_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 428,
+        "end_byte": 531,
+        "start": {
+          "row": 13,
+          "col": 4
+        },
+        "end": {
+          "row": 17,
+          "col": 5
+        }
+      },
+      "attrs": {
+        "signature": "pub fn new(name: &str) -> Self",
+        "visibility": "public",
+        "doc": "Build a widget from a borrowed name.",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "build",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1322,
+        "end_byte": 1528,
+        "start": {
+          "row": 50,
+          "col": 0
+        },
+        "end": {
+          "row": 54,
+          "col": 39
+        }
+      },
+      "attrs": {
+        "signature": "def build(radius: float) -> str",
+        "visibility": "public",
+        "doc": "Assemble one line of output for a radius.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::fmt",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "fmt",
+      "ast_kind": "function_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 698,
+        "end_byte": 802,
+        "start": {
+          "row": 26,
+          "col": 4
+        },
+        "end": {
+          "row": 28,
+          "col": 5
+        }
+      },
+      "attrs": {
+        "signature": "fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result",
+        "visibility": "private",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "kind": "class",
+      "label": "Shape",
+      "ast_kind": "class_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 523,
+        "end_byte": 916,
+        "start": {
+          "row": 16,
+          "col": 0
+        },
+        "end": {
+          "row": 31,
+          "col": 24
+        }
+      },
+      "attrs": {
+        "signature": "class Shape",
+        "visibility": "public",
+        "doc": "Base class: carries a name and knows its tuple of sides.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.sides",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "kind": "field",
+      "label": "sides",
+      "ast_kind": "expression_statement",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 611,
+        "end_byte": 620,
+        "start": {
+          "row": 19,
+          "col": 4
+        },
+        "end": {
+          "row": 19,
+          "col": 13
+        }
+      },
+      "attrs": {
+        "signature": "sides = 3",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Display for Widget",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "kind": "impl_block",
+      "label": "Display for Widget",
+      "ast_kind": "impl_item",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 662,
+        "end_byte": 805,
+        "start": {
+          "row": 25,
+          "col": 0
+        },
+        "end": {
+          "row": 29,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "impl fmt::Display for Widget",
+        "visibility": "private",
+        "extra": {
+          "depth": 0,
+          "impl_trait": "Display"
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "kind": "class",
+      "label": "Circle",
+      "ast_kind": "class_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 922,
+        "end_byte": 1316,
+        "start": {
+          "row": 34,
+          "col": 0
+        },
+        "end": {
+          "row": 47,
+          "col": 64
+        }
+      },
+      "attrs": {
+        "signature": "class Circle(Shape)",
+        "visibility": "public",
+        "doc": "A circle, so the call graph has a hierarchy to walk.",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.__init__",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "__init__",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 648,
+        "end_byte": 712,
+        "start": {
+          "row": 22,
+          "col": 4
+        },
+        "end": {
+          "row": 23,
+          "col": 24
+        }
+      },
+      "attrs": {
+        "signature": "def __init__(self, name: str) -> None",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+      "depth": 1
+    }
+  ],
+  "edges": [
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "_hidden",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1581,
+        "end_byte": 1594,
+        "start": {
+          "row": 58,
+          "col": 11
+        },
+        "end": {
+          "row": 58,
+          "col": 24
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape._seen",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.area",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "impl Widget",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.__init__",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "report_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+          "qualified_name": "report_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 2
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "build",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 4
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "dump_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 2
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.sides",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 3
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1805,
+        "end_byte": 1815,
+        "start": {
+          "row": 66,
+          "col": 4
+        },
+        "end": {
+          "row": 66,
+          "col": 14
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "table",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+          "qualified_name": "table",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "Widget::label",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "macro_invocation",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "impl Widget",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::new",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::new",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "dump_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 4
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "label_of",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.__init__",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "report_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.area",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "build",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 1
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 1
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1786,
+        "end_byte": 1799,
+        "start": {
+          "row": 65,
+          "col": 27
+        },
+        "end": {
+          "row": 65,
+          "col": 40
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "describe",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "frame",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 1074,
+        "end_byte": 1097,
+        "start": {
+          "row": 35,
+          "col": 4
+        },
+        "end": {
+          "row": 35,
+          "col": 27
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.describe",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "label_of",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "report_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+          "qualified_name": "report_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "frame",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "frame",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "macro_invocation",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "summarise",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+          "qualified_name": "summarise",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::fmt",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "Widget::fmt",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "macro_invocation",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.describe",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "Circle.describe",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "build",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 3
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "report_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+          "qualified_name": "report_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 1
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Display for Widget",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::fmt",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "dump_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 1
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.describe",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "frame",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "build",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::new",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "Widget::new",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "describe",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "describe",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "describe",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "impl Widget",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "table",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Display for Widget",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "_hidden",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "dump_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.sides",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.describe",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "dump_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 3
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "describe",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "describe",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 1
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.__init__",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.__init__",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "dump_all",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "dump_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 4
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "_hidden",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1823,
+        "end_byte": 1835,
+        "start": {
+          "row": 67,
+          "col": 4
+        },
+        "end": {
+          "row": 67,
+          "col": 16
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+          "qualified_name": "report_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 2
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "table",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "start_byte": 520,
+        "end_byte": 532,
+        "start": {
+          "row": 20,
+          "col": 11
+        },
+        "end": {
+          "row": 20,
+          "col": 23
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "describe",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 1
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "label_of",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "start_byte": 1080,
+        "end_byte": 1096,
+        "start": {
+          "row": 35,
+          "col": 10
+        },
+        "end": {
+          "row": 35,
+          "col": 26
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::name",
+        "kind": "field",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "Circle.describe",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.area",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1303,
+        "end_byte": 1314,
+        "start": {
+          "row": 47,
+          "col": 51
+        },
+        "end": {
+          "row": 47,
+          "col": 62
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "Widget::fmt",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Shape.label",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "build",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "start_byte": 1422,
+        "end_byte": 1436,
+        "start": {
+          "row": 52,
+          "col": 13
+        },
+        "end": {
+          "row": 52,
+          "col": 27
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "build",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "build",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 2
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+          "qualified_name": "report_all",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "summarise",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "start_byte": 467,
+        "end_byte": 490,
+        "start": {
+          "row": 19,
+          "col": 13
+        },
+        "end": {
+          "row": 19,
+          "col": 36
+        }
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.__init__",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "Circle.__init__",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\report.py",
+        "qualified_name": "summarise",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "_hidden",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+          "qualified_name": "_hidden",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+        "qualified_name": "label_of",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": "crates\\extract\\tests\\fixtures\\rust\\widget.rs",
+          "qualified_name": "label_of",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": "crates\\extract\\tests\\fixtures\\python\\geometry.py",
+        "qualified_name": "Circle.describe",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    }
+  ],
+  "file_count": 3,
+  "stats": {
+    "total_nodes": 27,
+    "total_edges": 72,
+    "function_count": 18,
+    "struct_count": 1,
+    "trait_count": 0,
+    "impl_count": 2,
+    "calls_edge_count": 11,
+    "contains_edge_count": 52,
+    "impl_edge_count": 0,
+    "data_flow_edge_count": 0
+  }
+}

@@ -1,0 +1,111 @@
+    Checking cg-ir v0.1.0 (D:\proyects\graphcodetree\crates\ir)
+    Checking cg-store v0.1.0 (D:\proyects\graphcodetree\crates\store)
+    Checking cg-extract v0.1.0 (D:\proyects\graphcodetree\crates\extract)
+error: redundant field names in struct initialization
+   --> crates\store\src\lib.rs:124:23
+    |
+124 |         Ok(GraphDelta{base_version:base_version,version:self.version,ops:out})
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `base_version`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#redundant_field_names
+    = note: `-D clippy::redundant-field-names` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::redundant_field_names)]`
+
+error: you should consider adding a `Default` implementation for `Interner`
+  --> crates\store\src\intern.rs:29:5
+   |
+29 | /     pub fn new() -> Self {
+30 | |         Self {
+31 | |             node_by_key: HashMap::new(),
+32 | |             node_by_id: Vec::new(),
+...  |
+38 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#new_without_default
+   = note: `-D clippy::new-without-default` implied by `-D warnings`
+   = help: to override `-D warnings` add `#[allow(clippy::new_without_default)]`
+help: try adding this
+   |
+28 + impl Default for Interner {
+29 +     fn default() -> Self {
+30 +         Self::new()
+31 +     }
+32 + }
+   |
+
+error: you should consider adding a `Default` implementation for `GraphStore`
+  --> crates\store\src\lib.rs:48:5
+   |
+48 | /     pub fn new() -> Self {
+49 | |         Self {
+50 | |             version: 0, nodes: HashMap::new(), edges: HashMap::new(),
+51 | |             interner: Interner::new(), imports: HashMap::new(),
+...  |
+55 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#new_without_default
+help: try adding this
+   |
+47 + impl Default for GraphStore {
+48 +     fn default() -> Self {
+49 +         Self::new()
+50 +     }
+51 + }
+   |
+
+error: this `map_or` can be simplified
+   --> crates\store\src\lib.rs:260:20
+    |
+260 |             let ir=view.root.map_or(true,|r|n.id==r||self.is_descendant_of(n.id,r));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#unnecessary_map_or
+    = note: `-D clippy::unnecessary-map-or` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::unnecessary_map_or)]`
+help: use `is_none_or` instead
+    |
+260 -             let ir=view.root.map_or(true,|r|n.id==r||self.is_descendant_of(n.id,r));
+260 +             let ir=view.root.is_none_or(|r|n.id==r||self.is_descendant_of(n.id,r));
+    |
+
+error: could not compile `cg-store` (lib) due to 4 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `cg-store` (lib test) due to 4 previous errors
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:166:20
+    |
+166 |     pub owned_doc: Option<fn(Node, &[u8]) -> Option<String>>,
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+    = note: `-D clippy::type-complexity` implied by `-D warnings`
+    = help: to override `-D warnings` add `#[allow(clippy::type_complexity)]`
+
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:196:20
+    |
+196 |     pub impl_info: Option<fn(Node, &[u8]) -> Option<ImplInfo>>,
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:198:24
+    |
+198 |     pub mod_decl_name: Option<fn(Node, &[u8]) -> Option<String>>,
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+
+error: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:201:20
+    |
+201 |     pub def_extra: Option<fn(Node, &[u8]) -> Vec<(String, serde_json::Value)>>,
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+
+error: could not compile `cg-extract` (lib) due to 4 previous errors
+error: could not compile `cg-extract` (lib test) due to 4 previous errors

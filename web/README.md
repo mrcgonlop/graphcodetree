@@ -176,6 +176,16 @@ names** — a folder called `line 3` is useless; a box's range lives in its
 tooltip instead. That tooltip (DOM overlay, hover) carries the signature, the
 `file:line:col` address, the byte range and the doc paragraph.
 
+Every piece of that text is painted from one palette, `LABEL_COLORS` in
+`constants.js` (`folder`, `file`, `symbol` and the `:line` beside a name), over
+`LABEL_HALO` — the dark shadow the overlay puts behind a label so an edge
+running through it does not eat it. Both modes read the same constants, which is
+the point of having them: this used to be five literals across four files, and
+the overlay had already drifted from itself (one pair when a label span was
+first built, a brighter pair on the next pan, so box names changed colour the
+moment you scrolled). `wiring.mjs` now pins that the two paths agree, so
+retuning the palette is a one-line edit in `constants.js` and nothing else.
+
 ### Focus mode and edge direction (`focus.js`, `constants.js`)
 
 Clicking a symbol focuses it:
@@ -262,7 +272,7 @@ boxes, symbols, cell size) and the active engine/detail/label/lines state.
 |------|----------------|
 | `app/main.js` | bootstrap: fetch `graph.json`, build the cytoscape instance + stylesheet, event handlers, kind filters, depth selector, search, stats header |
 | `app/state.js` | `S` — the single mutable state object, factory defaults, `resetParams()`, `PRESETS`/`applyPreset()` |
-| `app/constants.js` | `KIND_COLORS`, `EDGE_COLORS`, `DIRECTION_COLORS`/`DIRECTION_NAMES`/`DIRECTION_ARROWS`, `BORDERS`, `KIND_ORDER` |
+| `app/constants.js` | `KIND_COLORS`, `EDGE_COLORS`, `DIRECTION_COLORS`/`DIRECTION_NAMES`/`DIRECTION_ARROWS`, `LABEL_COLORS`/`LABEL_HALO`, `BORDERS`, `KIND_ORDER` |
 | `app/builder.js` | snapshot → elements: compound boxes, symbol nodes, edges, `label`/`labelLine`, path normalization |
 | `app/hierarchy.js` | the `'hierarchy'` engine: deterministic containment packing |
 | `app/layout.js` | layout options from live state, `runLayout()`, post-layout overlay refresh + re-fit |
@@ -305,6 +315,12 @@ cycle (`focus → visibility → details`).
 Focused incident edges: outgoing `#7dcfff`, incoming `#f7768e`
 (`DIRECTION_COLORS`).
 
+Text drawn on the graph (`LABEL_COLORS` in `constants.js`; the DOM overlay and
+cytoscape's native labels both read it, and `wiring.mjs` pins that they agree):
+folder `#ffffff`, file `#dde0f1`, symbol `#a9b1d6`, `:line` `#b1b8d9` — all over
+the `#0f0f1a` halo (`LABEL_HALO`). The sidebar's own panel text is a separate
+palette and lives in `style.css`.
+
 ## Tests
 
 Two Node harnesses live in `.cgtest/` and run the **real app modules against the
@@ -312,7 +328,7 @@ real `graph.json`** inside headless cytoscape (`.cgtest/cytoscape.min.cjs`):
 
 ```powershell
 node --experimental-default-type=module .cgtest/validate.mjs   # layout invariants (44 assertions)
-node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focus, metadata (236 assertions)
+node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focus, metadata, palette (245 assertions)
 ```
 
 - `validate.mjs` drives `state.js`, `builder.js`, `layout.js` and `hierarchy.js`
@@ -325,6 +341,9 @@ node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focu
   collapse, focus/unfocus. It exists because `bindRange()` in `controls.js`
   returns silently when its element is missing, so one mistyped id in
   `index.html` turns a control into a no-op with no error anywhere.
+- its last section pins the one thing two independent code paths could silently
+  disagree about: the colour of label text (`LABEL_COLORS`), asserted on the DOM
+  overlay's spans and on cytoscape's computed style in native-label mode.
 
 Both print `FAIL <label>` per failing check and exit non-zero. Convention after
 touching `web/refactor/**`: run both, and for a guard that is *supposed* to

@@ -1,0 +1,2308 @@
+Diff in \\?\D:\proyects\graphcodetree\crates\cli\src\main.rs:25:
+ use std::io::Write;
+ use std::path::PathBuf;
+ 
+[31m-use clap::Parser;
+[0m use cg_extract::{
+     diff, for_extension, Extractor, FileGraph, LangProfile, ProfileExtractor, SourceFile,
+ };
+Diff in \\?\D:\proyects\graphcodetree\crates\cli\src\main.rs:32:
+ use cg_ir::Snapshot;
+[32m+use clap::Parser;
+[0m use walkdir::WalkDir;
+ 
+ // ─── CLI Definition ───────────────────────────────────────────────────────────
+Diff in \\?\D:\proyects\graphcodetree\crates\cli\src\main.rs:91:
+ 
+             if demo {
+                 let demo_path = PathBuf::from(
+[31m-                    std::env::var("CARGO_MANIFEST_DIR")
+[0m[31m-                        .unwrap_or_else(|_| ".".into()),
+[0m[32m+                    std::env::var("CARGO_MANIFEST_DIR").unwrap_or_else(|_| ".".into()),
+[0m                 )
+                 .parent()
+                 .map(|p| p.join("web").join("demo").join("graph.json"))
+Diff in \\?\D:\proyects\graphcodetree\crates\cli\src\main.rs:238:
+         let mods = fg.mod_decls;
+ 
+         // Ingest into store.
+[31m-        let delta = store.ingest(
+[0m[31m-            version,
+[0m[31m-            &ops,
+[0m[31m-            &[(path.clone(), imports)],
+[0m[31m-            &[(path, mods)],
+[0m[31m-        )?;
+[0m[32m+        let delta = store.ingest(version, &ops, &[(path.clone(), imports)], &[(path, mods)])?;
+[0m         version = delta.version;
+     }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\call_graph.rs:15:
+ //! | `"same_file"`      | Already wired by extractor — skip. |
+ //! | `"dynamic"`        | Closures, macros — skip. |
+ 
+[31m-use cg_ir::{
+[0m[31m-    Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKind,
+[0m[31m-};
+[0m[31m-use cg_store::GraphStore;
+[0m use crate::Enricher;
+[32m+use cg_ir::{Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKind};
+[0m[32m+use cg_store::GraphStore;
+[0m 
+ /// Resolves cross-file call sites to their definition nodes.
+ pub struct CallGraphEnricher;
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\call_graph.rs:26:
+ 
+ impl Enricher for CallGraphEnricher {
+[31m-    fn name(&self) -> &'static str { "call_graph" }
+[0m[32m+    fn name(&self) -> &'static str {
+[0m[32m+        "call_graph"
+[0m[32m+    }
+[0m 
+     fn enrich(&self, store: &GraphStore) -> GraphDelta {
+         let base = store.version();
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\call_graph.rs:33:
+         let mut next_eid = store.edge_count() as u32 + 1;
+ 
+         for call_site in store.nodes_by_kind(NodeKind::CallSite) {
+[31m-            let resolution = call_site.attrs.extra.get("resolution")
+[0m[31m-                .and_then(|v| v.as_str()).unwrap_or("");
+[0m[32m+            let resolution = call_site
+[0m[32m+                .attrs
+[0m[32m+                .extra
+[0m[32m+                .get("resolution")
+[0m[32m+                .and_then(|v| v.as_str())
+[0m[32m+                .unwrap_or("");
+[0m             // The extractor writes "hint"; the enricher reads "hint".
+[31m-            let hint = call_site.attrs.extra.get("hint")
+[0m[31m-                .and_then(|v| v.as_str()).unwrap_or("");
+[0m[32m+            let hint = call_site
+[0m[32m+                .attrs
+[0m[32m+                .extra
+[0m[32m+                .get("hint")
+[0m[32m+                .and_then(|v| v.as_str())
+[0m[32m+                .unwrap_or("");
+[0m 
+             let target = match resolution {
+                 // Already wired by the extractor — skip.
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\data_flow.rs:20:
+ //! - Only simple `let`/`=` bindings where the RHS is a direct call are
+ //!   currently supported; method-chain data flow and field access are v2.
+ 
+[31m-use cg_ir::{
+[0m[31m-    Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKind,
+[0m[31m-};
+[0m[31m-use cg_store::GraphStore;
+[0m use crate::Enricher;
+[32m+use cg_ir::{Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKind};
+[0m[32m+use cg_store::GraphStore;
+[0m 
+ /// Enriches the graph with `DataFlow` edges between definitions.
+ pub struct DataFlowEnricher;
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\data_flow.rs:31:
+ 
+ impl Enricher for DataFlowEnricher {
+[31m-    fn name(&self) -> &'static str { "data_flow" }
+[0m[32m+    fn name(&self) -> &'static str {
+[0m[32m+        "data_flow"
+[0m[32m+    }
+[0m 
+     fn enrich(&self, store: &GraphStore) -> GraphDelta {
+         let base = store.version();
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\data_flow.rs:68:
+             // For each call site with `flows_from`, resolve the producer and
+             // consumer callees and create a DataFlow edge.
+             for (_ord, (call_site, call_id)) in &calls_by_ord {
+[31m-                let flows_from = call_site.attrs.extra.get("flows_from")
+[0m[32m+                let flows_from = call_site
+[0m[32m+                    .attrs
+[0m[32m+                    .extra
+[0m[32m+                    .get("flows_from")
+[0m                     .and_then(|v| v.as_str())
+                     .unwrap_or("");
+                 if flows_from.is_empty() {
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\impl_trait.rs:12:
+ //! We parse syntactically (no type inference) and look up the identifiers
+ //! in the store.
+ 
+[31m-use cg_ir::{
+[0m[31m-    Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKind,
+[0m[31m-};
+[0m[31m-use cg_store::GraphStore;
+[0m use crate::Enricher;
+[32m+use cg_ir::{Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKind};
+[0m[32m+use cg_store::GraphStore;
+[0m 
+ /// Wires up impl/trait hierarchy from syntactic signatures.
+ pub struct ImplTraitEnricher;
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\impl_trait.rs:23:
+ 
+ impl Enricher for ImplTraitEnricher {
+[31m-    fn name(&self) -> &'static str { "impl_trait" }
+[0m[32m+    fn name(&self) -> &'static str {
+[0m[32m+        "impl_trait"
+[0m[32m+    }
+[0m 
+     fn enrich(&self, store: &GraphStore) -> GraphDelta {
+         let base = store.version();
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\impl_trait.rs:40:
+                 if let Some(trait_id) = find_by_name(store, &trait_name, NodeKind::Trait) {
+                     // Look up the type node
+                     let type_kinds = &[NodeKind::Struct, NodeKind::Enum];
+[31m-                    let type_id = type_kinds.iter()
+[0m[32m+                    let type_id = type_kinds
+[0m[32m+                        .iter()
+[0m                         .find_map(|&k| find_by_name(store, &type_name, k));
+ 
+                     if let Some(type_id) = type_id {
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\impl_trait.rs:47:
+                         // Implements edge: impl_node → trait_node
+[31m-                        let eid = EdgeId(next_eid); next_eid += 1;
+[0m[32m+                        let eid = EdgeId(next_eid);
+[0m[32m+                        next_eid += 1;
+[0m                         ops.push(GraphOp::UpsertEdge(Edge {
+                             id: eid,
+                             kind: EdgeKind::Implements,
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\impl_trait.rs:56:
+                         }));
+ 
+                         // Also connect impl_node → type_node
+[31m-                        let eid2 = EdgeId(next_eid); next_eid += 1;
+[0m[32m+                        let eid2 = EdgeId(next_eid);
+[0m[32m+                        next_eid += 1;
+[0m                         ops.push(GraphOp::UpsertEdge(Edge {
+                             id: eid2,
+                             kind: EdgeKind::Implements,
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\impl_trait.rs:94:
+ 
+ /// Find a definition node by label and kind.
+ fn find_by_name(store: &GraphStore, name: &str, kind: NodeKind) -> Option<NodeId> {
+[31m-    store.nodes_by_kind(kind).iter()
+[0m[32m+    store
+[0m[32m+        .nodes_by_kind(kind)
+[0m[32m+        .iter()
+[0m         .find(|n| n.label == name)
+         .map(|n| n.id)
+ }
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\import_resolver.rs:13:
+ 
+ use std::path::Path;
+ 
+[31m-use cg_ir::{
+[0m[31m-    Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKey, NodeKind,
+[0m[31m-};
+[0m[31m-use cg_store::GraphStore;
+[0m use crate::Enricher;
+[32m+use cg_ir::{Edge, EdgeId, EdgeKind, GraphDelta, GraphOp, NodeId, NodeKey, NodeKind};
+[0m[32m+use cg_store::GraphStore;
+[0m 
+ /// Resolves local `mod` declarations and unconnected import records into
+ /// `Imports` / `Contains` edges.
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\import_resolver.rs:24:
+ pub struct ImportResolver;
+ 
+ impl Enricher for ImportResolver {
+[31m-    fn name(&self) -> &'static str { "import_resolver" }
+[0m[32m+    fn name(&self) -> &'static str {
+[0m[32m+        "import_resolver"
+[0m[32m+    }
+[0m 
+     fn enrich(&self, store: &GraphStore) -> GraphDelta {
+         let base = store.version();
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\import_resolver.rs:43:
+                 Some(NodeKey::Symbol { file, .. }) => file,
+                 _ => continue,
+             };
+[31m-            let Some(decls) = store.mod_decls_for(file_path) else { continue };
+[0m[32m+            let Some(decls) = store.mod_decls_for(file_path) else {
+[0m[32m+                continue;
+[0m[32m+            };
+[0m             let parent_dir = file_path.parent().unwrap_or(std::path::Path::new(""));
+ 
+             for decl in decls {
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\import_resolver.rs:79:
+                 Some(NodeKey::Symbol { file, .. }) => file,
+                 _ => continue,
+             };
+[31m-            let Some(imports) = store.imports_for(file_path) else { continue };
+[0m[32m+            let Some(imports) = store.imports_for(file_path) else {
+[0m[32m+                continue;
+[0m[32m+            };
+[0m 
+             for imp in imports {
+                 let qn = import_path_to_qualified(&imp.path);
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\import_resolver.rs:152:
+         kind: NodeKind::Module,
+         disambiguator: 0,
+     };
+[31m-    store.lookup_node(&key)
+[0m[31m-        .or_else(|| {
+[0m[31m-            let fk = NodeKey::Symbol {
+[0m[31m-                lang: cg_ir::Lang::Rust,
+[0m[31m-                file: normalized,
+[0m[31m-                qualified_name: String::new(),
+[0m[31m-                kind: NodeKind::File,
+[0m[31m-                disambiguator: 0,
+[0m[31m-            };
+[0m[31m-            store.lookup_node(&fk)
+[0m[31m-        })
+[0m[32m+    store.lookup_node(&key).or_else(|| {
+[0m[32m+        let fk = NodeKey::Symbol {
+[0m[32m+            lang: cg_ir::Lang::Rust,
+[0m[32m+            file: normalized,
+[0m[32m+            qualified_name: String::new(),
+[0m[32m+            kind: NodeKind::File,
+[0m[32m+            disambiguator: 0,
+[0m[32m+        };
+[0m[32m+        store.lookup_node(&fk)
+[0m[32m+    })
+[0m }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\lib.rs:15:
+ //! | R4   | `DataFlowEnricher` | `DataFlow` edges tracking value provenance between definitions |
+ //! | R5+  | Type resolver | Method dispatch, dataflow, generics |
+ 
+[31m-mod import_resolver;
+[0m mod call_graph;
+[31m-mod impl_trait;
+[0m mod data_flow;
+[32m+mod impl_trait;
+[0m[32m+mod import_resolver;
+[0m 
+[31m-pub use import_resolver::ImportResolver;
+[0m pub use call_graph::CallGraphEnricher;
+[31m-pub use impl_trait::ImplTraitEnricher;
+[0m pub use data_flow::DataFlowEnricher;
+[32m+pub use impl_trait::ImplTraitEnricher;
+[0m[32m+pub use import_resolver::ImportResolver;
+[0m 
+ use cg_ir::GraphDelta;
+ use cg_store::GraphStore;
+Diff in \\?\D:\proyects\graphcodetree\crates\enrich\src\lib.rs:73:
+     fn enricher_trait_baseline() {
+         struct Noop;
+         impl Enricher for Noop {
+[31m-            fn name(&self) -> &'static str { "noop" }
+[0m[32m+            fn name(&self) -> &'static str {
+[0m[32m+                "noop"
+[0m[32m+            }
+[0m             fn enrich(&self, _store: &GraphStore) -> GraphDelta {
+[31m-                GraphDelta { base_version: 0, version: 0, ops: vec![] }
+[0m[32m+                GraphDelta {
+[0m[32m+                    base_version: 0,
+[0m[32m+                    version: 0,
+[0m[32m+                    ops: vec![],
+[0m[32m+                }
+[0m             }
+         }
+         let store = GraphStore::new();
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\lib.rs:109:
+     let mut ops = Vec::new();
+     for (k, spec) in &new.nodes {
+         if old.nodes.get(k) != Some(spec) {
+[31m-            ops.push(KeyOp::UpsertNode { key: k.clone(), spec: spec.clone() });
+[0m[32m+            ops.push(KeyOp::UpsertNode {
+[0m[32m+                key: k.clone(),
+[0m[32m+                spec: spec.clone(),
+[0m[32m+            });
+[0m         }
+     }
+     for (k, spec) in &new.edges {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\lib.rs:116:
+         if old.edges.get(k) != Some(spec) {
+[31m-            ops.push(KeyOp::UpsertEdge { key: k.clone(), spec: spec.clone() });
+[0m[32m+            ops.push(KeyOp::UpsertEdge {
+[0m[32m+                key: k.clone(),
+[0m[32m+                spec: spec.clone(),
+[0m[32m+            });
+[0m         }
+     }
+     for k in old.edges.keys().filter(|k| !new.edges.contains_key(*k)) {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\lib.rs:151:
+     text.hash(&mut h);
+     h.finish()
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\extract\src\profile.rs:280:
+     #[test]
+     fn every_profile_is_self_consistent() {
+         for p in all() {
+[31m-            assert!(for_lang(p.lang).is_some(), "{:?} not reachable by lang", p.lang);
+[0m[32m+            assert!(
+[0m[32m+                for_lang(p.lang).is_some(),
+[0m[32m+                "{:?} not reachable by lang",
+[0m[32m+                p.lang
+[0m[32m+            );
+[0m             for ext in p.extensions {
+                 assert!(!ext.starts_with('.'), "{ext} must not carry a dot");
+                 let found = for_extension(ext).unwrap_or_else(|| panic!("{ext} not reachable"));
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:164:
+     let decorators: Vec<String> = parent
+         .named_children(&mut cur)
+         .filter(|c| c.kind() == "decorator")
+[31m-        .map(|c| {
+[0m[31m-            txt(&c, src)
+[0m[31m-                .trim_start_matches('@')
+[0m[31m-                .trim()
+[0m[31m-                .to_string()
+[0m[31m-        })
+[0m[32m+        .map(|c| txt(&c, src).trim_start_matches('@').trim().to_string())
+[0m         .collect();
+     if decorators.is_empty() {
+         return Vec::new();
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:220:
+ fn docstring_body(string: Node, src: &[u8]) -> String {
+     let raw = txt(&string, src).trim_start_matches(|c: char| c.is_ascii_alphabetic());
+     for quote in ["\"\"\"", "'''", "\"", "'"] {
+[31m-        if let Some(body) = raw
+[0m[31m-            .strip_prefix(quote)
+[0m[31m-            .and_then(|b| b.strip_suffix(quote))
+[0m[31m-        {
+[0m[32m+        if let Some(body) = raw.strip_prefix(quote).and_then(|b| b.strip_suffix(quote)) {
+[0m             return body.to_string();
+         }
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:303:
+     (left.kind() == "identifier").then(|| txt(&left, src).to_string())
+ }
+ 
+[31m-
+[0m // --- call sites, data flow, imports ---------------------------------------
+ 
+ /// Every call names its callee in the `function` field.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:410:
+     }
+ }
+ 
+[31m-
+[0m /// `import os.path as osp, sys` / `from collections import OrderedDict as OD`
+ /// / `from ..pkg import (a, b as c)` / `from . import sibling` /
+ /// `from pkg.mod import *` → resolver records. One record per imported name:
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:501:
+     found
+ }
+ 
+[31m-
+[0m #[cfg(test)]
+ mod tests {
+     use super::*;
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:592:
+     /// `(ancestor, ordinal)` for an anchored key, if it is one.
+     fn anchored_parts(k: &NodeKey) -> Option<(&NodeKey, u32)> {
+         match k {
+[31m-            NodeKey::Anchored { ancestor, ordinal, .. } => Some((ancestor, *ordinal)),
+[0m[32m+            NodeKey::Anchored {
+[0m[32m+                ancestor, ordinal, ..
+[0m[32m+            } => Some((ancestor, *ordinal)),
+[0m             _ => None,
+         }
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:664:
+ 
+         // Visibility is name-based (D2); `__init__` is a plain public Method.
+         assert_eq!(node(&g, "Shape.__init__").kind, NodeKind::Method);
+[31m-        assert_eq!(node(&g, "Shape.__init__").attrs.visibility, Visibility::Public);
+[0m[31m-        assert_eq!(node(&g, "Shape._compute").attrs.visibility, Visibility::Module);
+[0m[31m-        assert_eq!(node(&g, "Shape._hidden").attrs.visibility, Visibility::Module);
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Shape.__init__").attrs.visibility,
+[0m[32m+            Visibility::Public
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Shape._compute").attrs.visibility,
+[0m[32m+            Visibility::Module
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Shape._hidden").attrs.visibility,
+[0m[32m+            Visibility::Module
+[0m[32m+        );
+[0m         assert_eq!(node(&g, "Shape.sides").attrs.visibility, Visibility::Public);
+         assert_eq!(node(&g, "__secret").attrs.visibility, Visibility::Private);
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:686:
+ 
+         // Imports: one record per imported name, relative dots kept as segments.
+         assert_eq!(g.imports.len(), 4, "{:?}", g.imports);
+[31m-        assert!(g.imports.iter().any(|r| r.path == ["os", "path"] && r.alias.is_none()));
+[0m[31m-        assert!(g.imports
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m             .iter()
+[32m+            .any(|r| r.path == ["os", "path"] && r.alias.is_none()));
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m[32m+            .iter()
+[0m             .any(|r| r.path == ["collections", "OrderedDict"] && r.alias.as_deref() == Some("OD")));
+[31m-        assert!(g.imports.iter().any(|r| r.path == [".", "sibling"] && r.alias.is_none()));
+[0m[31m-        assert!(g.imports
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m             .iter()
+[32m+            .any(|r| r.path == [".", "sibling"] && r.alias.is_none()));
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m[32m+            .iter()
+[0m             .any(|r| r.path == ["..", "pkg", "helper"] && r.alias.as_deref() == Some("h2")));
+ 
+         // Namespace edges: the class Defines its methods, and only them.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:699:
+         let shape = def_key(&g, "Shape");
+[31m-        for m in ["Shape.__init__", "Shape.area", "Shape.label", "Shape._compute"] {
+[0m[32m+        for m in [
+[0m[32m+            "Shape.__init__",
+[0m[32m+            "Shape.area",
+[0m[32m+            "Shape.label",
+[0m[32m+            "Shape._compute",
+[0m[32m+        ] {
+[0m             let member = def_key(&g, m);
+             assert!(
+                 g.edges.keys().any(|k| k.kind == EdgeKind::Defines
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:709:
+         for f in ["Shape.sides", "Shape._hidden"] {
+             let field = def_key(&g, f);
+             assert!(
+[31m-                !g.edges.keys().any(|k| k.kind == EdgeKind::Defines && k.target == field),
+[0m[32m+                !g.edges
+[0m[32m+                    .keys()
+[0m[32m+                    .any(|k| k.kind == EdgeKind::Defines && k.target == field),
+[0m                 "attributes are Contains-only, like Rust's struct fields"
+             );
+             assert!(
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:721:
+         }
+     }
+ 
+[31m-
+[0m     #[test]
+     fn resolves_same_file_calls_and_records_the_rest() {
+         let g = extract(FIXTURE);
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:728:
+[31m-        let calls: Vec<_> = g.edges.iter().filter(|(k, _)| k.kind == EdgeKind::Calls).collect();
+[0m[32m+        let calls: Vec<_> = g
+[0m[32m+            .edges
+[0m[32m+            .iter()
+[0m[32m+            .filter(|(k, _)| k.kind == EdgeKind::Calls)
+[0m[32m+            .collect();
+[0m         assert_eq!(calls.len(), 4, "{calls:#?}");
+ 
+         // self.method() inside the class body resolves without types.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:736:
+             ast_kind: "call".into(),
+             ordinal: 0,
+         };
+[31m-        assert!(calls.iter().any(|(k, _)| k.source == self_site && k.target == compute));
+[0m[31m-        assert_eq!(site(&g, "_compute", "self_method").unwrap().label, "_compute");
+[0m[32m+        assert!(calls
+[0m[32m+            .iter()
+[0m[32m+            .any(|(k, _)| k.source == self_site && k.target == compute));
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "_compute", "self_method").unwrap().label,
+[0m[32m+            "_compute"
+[0m[32m+        );
+[0m 
+         // A later definition resolves: `local_fn()` is called before it is read.
+         let local = def_key(&g, "local_fn");
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:746:
+             ast_kind: "call".into(),
+             ordinal: 1,
+         };
+[31m-        assert!(calls.iter().any(|(k, _)| k.source == later_site && k.target == local));
+[0m[32m+        assert!(calls
+[0m[32m+            .iter()
+[0m[32m+            .any(|(k, _)| k.source == later_site && k.target == local));
+[0m 
+         // A class is a definition: `Shape("sq")` is a same-file call.
+         let shape = def_key(&g, "Shape");
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:753:
+         assert!(calls.iter().any(|(k, _)| k.target == shape));
+ 
+         // Unresolved, but recorded with the receiver as a hint for cg-resolve.
+[31m-        assert_eq!(site(&g, "area", "method_unresolved").unwrap().attrs.extra["hint"], "shape");
+[0m[31m-        assert_eq!(site(&g, "join", "method_unresolved").unwrap().attrs.extra["hint"], "os.path");
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "area", "method_unresolved").unwrap().attrs.extra["hint"],
+[0m[32m+            "shape"
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "join", "method_unresolved").unwrap().attrs.extra["hint"],
+[0m[32m+            "os.path"
+[0m[32m+        );
+[0m         // Imported names carry the import path instead. The path is the record's
+         // segments joined with `qual_sep`, so a relative import's dot run reads
+         // as a doubled dot (`from . import x` → `..x`) — the segments in
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:761:
+         // `g.imports` above are what the resolver consumes.
+[31m-        assert_eq!(site(&g, "h2", "imported").unwrap().attrs.extra["hint"], "...pkg.helper");
+[0m[31m-        assert_eq!(site(&g, "sibling", "imported").unwrap().attrs.extra["hint"], "..sibling");
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "h2", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "...pkg.helper"
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "sibling", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "..sibling"
+[0m[32m+        );
+[0m         // One site per call, decorators included (they are metadata, not calls).
+         assert_eq!(sites(&g).len(), 8);
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:826:
+ 
+         // Hints: the bare `a` imported from `pkg` resolves to `pkg.a`; the glob
+         // leaves `a` unresolved rather than guessing.
+[31m-        assert_eq!(site(&g, "a", "imported").unwrap().attrs.extra["hint"], "pkg.a");
+[0m[31m-        assert_eq!(site(&g, "h2", "imported").unwrap().attrs.extra["hint"], "...pkg.helper");
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "a", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "pkg.a"
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "h2", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "...pkg.helper"
+[0m[32m+        );
+[0m     }
+ 
+[31m-
+[0m     #[test]
+     fn tracks_data_flow_across_bindings() {
+         let src = r#"
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:873:
+         let flows: Vec<Option<&str>> = trace.iter().map(|(_, f)| f.as_deref()).collect();
+         assert_eq!(
+             flows,
+[31m-            vec![None, Some("0->0"), None, Some("0->2,1->2"), None, Some("0->4,1->4"), None],
+[0m[32m+            vec![
+[0m[32m+                None,
+[0m[32m+                Some("0->0"),
+[0m[32m+                None,
+[0m[32m+                Some("0->2,1->2"),
+[0m[32m+                None,
+[0m[32m+                Some("0->4,1->4"),
+[0m[32m+                None
+[0m[32m+            ],
+[0m             "{trace:#?}"
+         );
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:881:
+     #[test]
+     fn keys_are_stable_under_body_edits() {
+         let before = extract(FIXTURE);
+[31m-        let edited = FIXTURE.replace("def local_fn() -> int:\n    return 2", "def local_fn() -> int:\n    # noop\n    return 2");
+[0m[32m+        let edited = FIXTURE.replace(
+[0m[32m+            "def local_fn() -> int:\n    return 2",
+[0m[32m+            "def local_fn() -> int:\n    # noop\n    return 2",
+[0m[32m+        );
+[0m         let after = extract(&edited);
+         let ops = diff(&before, &after);
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:888:
+         // Identity survives; only specs (spans) change.
+         assert!(!ops.is_empty());
+         assert!(
+[31m-            ops.iter().all(|op| !matches!(
+[0m[31m-                op,
+[0m[31m-                KeyOp::RemoveNode { .. } | KeyOp::RemoveEdge { .. }
+[0m[31m-            )),
+[0m[32m+            ops.iter()
+[0m[32m+                .all(|op| !matches!(op, KeyOp::RemoveNode { .. } | KeyOp::RemoveEdge { .. })),
+[0m             "no identity churn expected: {ops:#?}"
+         );
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:902:
+                 .map(|(k, _)| k.clone())
+                 .collect::<std::collections::BTreeSet<_>>()
+         };
+[31m-        assert_eq!(callsites(&before), callsites(&after), "anchored keys renumbered");
+[0m[32m+        assert_eq!(
+[0m[32m+            callsites(&before),
+[0m[32m+            callsites(&after),
+[0m[32m+            "anchored keys renumbered"
+[0m[32m+        );
+[0m     }
+ 
+     /// Indentation grammars swallow broken code into `ERROR` nodes; the walker
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:916:
+         // The good definition after the garbage still lands, signature and all.
+         let good = node(&g, "still_ok");
+         assert_eq!(good.kind, NodeKind::Function);
+[31m-        assert_eq!(good.attrs.signature.as_deref(), Some("def still_ok() -> int"));
+[0m[32m+        assert_eq!(
+[0m[32m+            good.attrs.signature.as_deref(),
+[0m[32m+            Some("def still_ok() -> int")
+[0m[32m+        );
+[0m 
+         // `pass` and `return 1` are expressions, not calls, and no node is named
+         // after raw source: recovery never fabricates a definition from garbage.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:935:
+     /// producing confident nonsense.
+     #[test]
+     fn python_and_rust_profiles_do_not_interchange() {
+[31m-        assert_eq!(crate::for_extension("py").map(|p| p.lang), Some(Lang::Python));
+[0m[32m+        assert_eq!(
+[0m[32m+            crate::for_extension("py").map(|p| p.lang),
+[0m[32m+            Some(Lang::Python)
+[0m[32m+        );
+[0m         assert_eq!(crate::for_extension("rs").map(|p| p.lang), Some(Lang::Rust));
+ 
+         let py = SourceFile {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:955:
+         assert!(matches!(wrong, Err(crate::ExtractError::LangMismatch)));
+     }
+ }
+[31m-
+[0m 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:135:
+ fn rust_classify(kind: &str) -> ItemClass {
+     use ItemClass::{Def, Impl, Import, Transparent};
+     match kind {
+[31m-        "mod_item" => Def { kind: NodeKind::Module, body: BodyRole::Scope },
+[0m[31m-        "function_item" | "function_signature_item" => {
+[0m[31m-            Def { kind: NodeKind::Function, body: BodyRole::Calls }
+[0m[31m-        }
+[0m[32m+        "mod_item" => Def {
+[0m[32m+            kind: NodeKind::Module,
+[0m[32m+            body: BodyRole::Scope,
+[0m[32m+        },
+[0m[32m+        "function_item" | "function_signature_item" => Def {
+[0m[32m+            kind: NodeKind::Function,
+[0m[32m+            body: BodyRole::Calls,
+[0m[32m+        },
+[0m         "struct_item" | "union_item" => Def {
+             kind: NodeKind::Struct,
+             body: BodyRole::Members(RUST_STRUCT_MEMBERS),
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:145:
+         },
+[31m-        "enum_item" => Def { kind: NodeKind::Enum, body: BodyRole::Members(RUST_ENUM_MEMBERS) },
+[0m[31m-        "trait_item" => Def { kind: NodeKind::Trait, body: BodyRole::Scope },
+[0m[32m+        "enum_item" => Def {
+[0m[32m+            kind: NodeKind::Enum,
+[0m[32m+            body: BodyRole::Members(RUST_ENUM_MEMBERS),
+[0m[32m+        },
+[0m[32m+        "trait_item" => Def {
+[0m[32m+            kind: NodeKind::Trait,
+[0m[32m+            body: BodyRole::Scope,
+[0m[32m+        },
+[0m         "impl_item" => Impl,
+         "use_declaration" => Import,
+[31m-        "const_item" => Def { kind: NodeKind::Constant, body: BodyRole::Calls },
+[0m[31m-        "static_item" => Def { kind: NodeKind::Static, body: BodyRole::Calls },
+[0m[31m-        "type_item" | "associated_type" => Def { kind: NodeKind::TypeAlias, body: BodyRole::None },
+[0m[31m-        "macro_definition" => Def { kind: NodeKind::Macro, body: BodyRole::None },
+[0m[32m+        "const_item" => Def {
+[0m[32m+            kind: NodeKind::Constant,
+[0m[32m+            body: BodyRole::Calls,
+[0m[32m+        },
+[0m[32m+        "static_item" => Def {
+[0m[32m+            kind: NodeKind::Static,
+[0m[32m+            body: BodyRole::Calls,
+[0m[32m+        },
+[0m[32m+        "type_item" | "associated_type" => Def {
+[0m[32m+            kind: NodeKind::TypeAlias,
+[0m[32m+            body: BodyRole::None,
+[0m[32m+        },
+[0m[32m+        "macro_definition" => Def {
+[0m[32m+            kind: NodeKind::Macro,
+[0m[32m+            body: BodyRole::None,
+[0m[32m+        },
+[0m         _ => Transparent,
+     }
+ }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:272:
+             let method = func
+                 .child_by_field_name("field")
+                 .map(|f| txt(&f, src).to_string())
+[31m-                .unwrap_or_else(|| txt(&func, src).rsplit("::").next().unwrap_or("").to_string());
+[0m[32m+                .unwrap_or_else(|| {
+[0m[32m+                    txt(&func, src)
+[0m[32m+                        .rsplit("::")
+[0m[32m+                        .next()
+[0m[32m+                        .unwrap_or("")
+[0m[32m+                        .to_string()
+[0m[32m+                });
+[0m             let receiver = func
+                 .child_by_field_name("value")
+                 .map(|v| txt(&v, src).to_string())
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:326:
+ fn rust_impl_info(n: Node, src: &[u8]) -> Option<ImplInfo> {
+     let type_n = n.child_by_field_name("type")?;
+     let type_name = base_type_name(type_n, src);
+[31m-    let trait_name = n.child_by_field_name("trait").map(|t| base_type_name(t, src));
+[0m[32m+    let trait_name = n
+[0m[32m+        .child_by_field_name("trait")
+[0m[32m+        .map(|t| base_type_name(t, src));
+[0m     let label = match &trait_name {
+         Some(t) => format!("{t} for {type_name}"),
+         None => format!("impl {type_name}"),
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:333:
+     };
+[31m-    Some(ImplInfo { label, type_name, trait_name })
+[0m[32m+    Some(ImplInfo {
+[0m[32m+        label,
+[0m[32m+        type_name,
+[0m[32m+        trait_name,
+[0m[32m+    })
+[0m }
+ 
+ /// A body-less `mod foo;` — its contents live in a sibling file that
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:340:
+     if n.kind() != "mod_item" {
+         return None;
+     }
+[31m-    n.child_by_field_name("name").map(|m| txt(&m, src).to_string())
+[0m[32m+    n.child_by_field_name("name")
+[0m[32m+        .map(|m| txt(&m, src).to_string())
+[0m }
+ 
+ /// "impl<T> Foo<T>" → "Foo"; "impl crate::a::Foo" → "Foo".
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:398:
+             // `a::b::{x, y}` — path field when present, else first named child
+             let mut cur = n.walk();
+             let children: Vec<_> = n.named_children(&mut cur).collect();
+[31m-            let path_n = n.child_by_field_name("path").or_else(|| children.first().copied());
+[0m[32m+            let path_n = n
+[0m[32m+                .child_by_field_name("path")
+[0m[32m+                .or_else(|| children.first().copied());
+[0m             let Some(path_n) = path_n else { return };
+             let mut pfx = prefix;
+             pfx.extend(txt(&path_n, src).split("::").map(str::to_string));
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:559:
+     #[test]
+     fn extracts_structure() {
+         let g = extract(FIXTURE);
+[31m-        assert_eq!(g.nodes.len(), 27, "node census changed: {:#?}", g.nodes.keys().collect::<Vec<_>>());
+[0m[32m+        assert_eq!(
+[0m[32m+            g.nodes.len(),
+[0m[32m+            27,
+[0m[32m+            "node census changed: {:#?}",
+[0m[32m+            g.nodes.keys().collect::<Vec<_>>()
+[0m[32m+        );
+[0m         assert_eq!(g.edges.len(), 34);
+ 
+         // docs, signatures, visibility
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:566:
+[31m-        assert_eq!(node(&g, "Thing").attrs.doc.as_deref(), Some("A thing does stuff."));
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Thing").attrs.doc.as_deref(),
+[0m[32m+            Some("A thing does stuff.")
+[0m[32m+        );
+[0m         assert!(node(&g, "Thing::new")
+             .attrs
+             .signature
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:570:
+             .as_deref()
+             .unwrap()
+             .starts_with("pub fn new(name: String) -> Self"));
+[31m-        assert_eq!(node(&g, "Thing::bump").attrs.visibility, Visibility::Private);
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Thing::bump").attrs.visibility,
+[0m[32m+            Visibility::Private
+[0m[32m+        );
+[0m         assert_eq!(node(&g, "Thing").attrs.visibility, Visibility::Public);
+ 
+         // qualified names through mod / impl / enum / field
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:577:
+         for q in [
+[31m-            "inner::nested", "Thing::name", "Color::Red", "Describe::describe",
+[0m[31m-            "Thing::new", "Thing::describe",
+[0m[32m+            "inner::nested",
+[0m[32m+            "Thing::name",
+[0m[32m+            "Color::Red",
+[0m[32m+            "Describe::describe",
+[0m[32m+            "Thing::new",
+[0m[32m+            "Thing::describe",
+[0m         ] {
+             def_key(&g, q);
+         }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:584:
+ 
+         // imports: no nodes, resolver records + simple-name hints
+         assert_eq!(g.imports.len(), 3, "{:?}", g.imports);
+[31m-        assert!(g.imports.iter().any(|r| r.alias.as_deref() == Some("Delta")));
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m[32m+            .iter()
+[0m[32m+            .any(|r| r.alias.as_deref() == Some("Delta")));
+[0m 
+         // namespace edges: Type Defines its members (inherent + trait impl)
+         let thing = def_key(&g, "Thing");
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:591:
+         for m in ["Thing::new", "Thing::describe"] {
+             let member = def_key(&g, m);
+[31m-            assert!(g.edges.keys().any(|k| k.kind == EdgeKind::Defines
+[0m[31m-                && k.source == thing
+[0m[31m-                && k.target == member));
+[0m[32m+            assert!(g
+[0m[32m+                .edges
+[0m[32m+                .keys()
+[0m[32m+                .any(|k| k.kind == EdgeKind::Defines && k.source == thing && k.target == member));
+[0m         }
+     }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:615:
+         };
+         let fg = RustExtractor.extract(&file).unwrap();
+ 
+[31m-        let flows: Vec<_> = fg.nodes.iter()
+[0m[32m+        let flows: Vec<_> = fg
+[0m[32m+            .nodes
+[0m[32m+            .iter()
+[0m             .filter(|(_, n)| n.kind == NodeKind::CallSite)
+             .filter(|(_, n)| n.attrs.extra.contains_key("flows_from"))
+             .collect();
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:622:
+ 
+[31m-        assert!(!flows.is_empty(), "expected at least one flows_from annotation");
+[0m[31m-        let bar_has_flow = fg.nodes.iter().any(|(_, n)| {
+[0m[31m-            n.label == "bar" && n.attrs.extra.contains_key("flows_from")
+[0m[31m-        });
+[0m[32m+        assert!(
+[0m[32m+            !flows.is_empty(),
+[0m[32m+            "expected at least one flows_from annotation"
+[0m[32m+        );
+[0m[32m+        let bar_has_flow = fg
+[0m[32m+            .nodes
+[0m[32m+            .iter()
+[0m[32m+            .any(|(_, n)| n.label == "bar" && n.attrs.extra.contains_key("flows_from"));
+[0m         assert!(bar_has_flow, "bar(x) should have flows_from");
+ 
+[31m-        let qux_has_flow = fg.nodes.iter().any(|(_, n)| {
+[0m[31m-            n.label == "qux" && n.attrs.extra.contains_key("flows_from")
+[0m[31m-        });
+[0m[32m+        let qux_has_flow = fg
+[0m[32m+            .nodes
+[0m[32m+            .iter()
+[0m[32m+            .any(|(_, n)| n.label == "qux" && n.attrs.extra.contains_key("flows_from"));
+[0m         assert!(qux_has_flow, "qux(&y) should have flows_from");
+ 
+[31m-        let both_has_flow = fg.nodes.iter().any(|(_, n)| {
+[0m[31m-            n.label == "both" && n.attrs.extra.contains_key("flows_from")
+[0m[31m-        });
+[0m[32m+        let both_has_flow = fg
+[0m[32m+            .nodes
+[0m[32m+            .iter()
+[0m[32m+            .any(|(_, n)| n.label == "both" && n.attrs.extra.contains_key("flows_from"));
+[0m         assert!(both_has_flow, "both(a, &b) should have flows_from");
+     }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:640:
+     #[test]
+     fn resolves_same_file_calls() {
+         let g = extract(FIXTURE);
+[31m-        let calls: Vec<_> = g.edges.iter().filter(|(k, _)| k.kind == EdgeKind::Calls).collect();
+[0m[32m+        let calls: Vec<_> = g
+[0m[32m+            .edges
+[0m[32m+            .iter()
+[0m[32m+            .filter(|(k, _)| k.kind == EdgeKind::Calls)
+[0m[32m+            .collect();
+[0m         assert_eq!(calls.len(), 4, "{calls:#?}");
+ 
+         // helper() from Thing::new resolves even though helper is defined later
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:651:
+             ast_kind: "call_expression".into(),
+             ordinal: 0,
+         };
+[31m-        assert!(calls.iter().any(|(k, _)| k.source == site && k.target == helper));
+[0m[32m+        assert!(calls
+[0m[32m+            .iter()
+[0m[32m+            .any(|(k, _)| k.source == site && k.target == helper));
+[0m 
+         // self.log() inside bump → Thing::log
+         let log = def_key(&g, "Thing::log");
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:662:
+         assert!(calls.iter().any(|(k, _)| k.target == new2));
+ 
+         // unresolved-but-recorded: method on local, std path, macro
+[31m-        let sites: Vec<_> = g.nodes.values().filter(|n| n.kind == NodeKind::CallSite).collect();
+[0m[32m+        let sites: Vec<_> = g
+[0m[32m+            .nodes
+[0m[32m+            .values()
+[0m[32m+            .filter(|n| n.kind == NodeKind::CallSite)
+[0m[32m+            .collect();
+[0m         assert_eq!(sites.len(), 8);
+         for (callee, tag) in [
+             ("bump", "method_unresolved"),
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:669:
+             ("exit", "path_unresolved"),
+             ("format", "unresolved"),
+         ] {
+[31m-            assert!(sites.iter().any(|s| {
+[0m[31m-                s.attrs.extra.get("callee").and_then(|v| v.as_str()) == Some(callee)
+[0m[31m-                    && s.attrs.extra.get("resolution").and_then(|v| v.as_str()) == Some(tag)
+[0m[31m-            }), "missing {callee}/{tag}");
+[0m[32m+            assert!(
+[0m[32m+                sites.iter().any(|s| {
+[0m[32m+                    s.attrs.extra.get("callee").and_then(|v| v.as_str()) == Some(callee)
+[0m[32m+                        && s.attrs.extra.get("resolution").and_then(|v| v.as_str()) == Some(tag)
+[0m[32m+                }),
+[0m[32m+                "missing {callee}/{tag}"
+[0m[32m+            );
+[0m         }
+     }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:685:
+ 
+         // identity survives; only specs (spans) change
+         assert!(!ops.is_empty());
+[31m-        assert!(ops.iter().all(|op| !matches!(
+[0m[31m-            op,
+[0m[31m-            crate::KeyOp::RemoveNode { .. } | crate::KeyOp::RemoveEdge { .. }
+[0m[31m-        )), "no identity churn expected: {ops:#?}");
+[0m[32m+        assert!(
+[0m[32m+            ops.iter().all(|op| !matches!(
+[0m[32m+                op,
+[0m[32m+                crate::KeyOp::RemoveNode { .. } | crate::KeyOp::RemoveEdge { .. }
+[0m[32m+            )),
+[0m[32m+            "no identity churn expected: {ops:#?}"
+[0m[32m+        );
+[0m 
+         let callsites = |g: &FileGraph| {
+             g.nodes
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:697:
+                 .map(|(k, _)| k.clone())
+                 .collect::<std::collections::BTreeSet<_>>()
+         };
+[31m-        assert_eq!(callsites(&before), callsites(&after), "anchored keys renumbered");
+[0m[32m+        assert_eq!(
+[0m[32m+            callsites(&before),
+[0m[32m+            callsites(&after),
+[0m[32m+            "anchored keys renumbered"
+[0m[32m+        );
+[0m     }
+ 
+     /// The repo renders itself: extract this crate's own extractor sources.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:715:
+         ] {
+             let path = dir.join(name);
+             let text = std::fs::read_to_string(&path).unwrap();
+[31m-            let file = SourceFile { path: path.clone(), lang: Lang::Rust, text };
+[0m[32m+            let file = SourceFile {
+[0m[32m+                path: path.clone(),
+[0m[32m+                lang: Lang::Rust,
+[0m[32m+                text,
+[0m[32m+            };
+[0m             let g = RustExtractor.extract(&file).unwrap();
+             def_key(&g, expect_def);
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:722:
+[31m-            let sites = g.nodes.values().filter(|n| n.kind == NodeKind::CallSite).count();
+[0m[31m-            let calls = g.edges.values().filter(|e| e.kind == EdgeKind::Calls).count();
+[0m[32m+            let sites = g
+[0m[32m+                .nodes
+[0m[32m+                .values()
+[0m[32m+                .filter(|n| n.kind == NodeKind::CallSite)
+[0m[32m+                .count();
+[0m[32m+            let calls = g
+[0m[32m+                .edges
+[0m[32m+                .values()
+[0m[32m+                .filter(|e| e.kind == EdgeKind::Calls)
+[0m[32m+                .count();
+[0m             eprintln!(
+                 "self-render of {name}: {} nodes ({} call sites), {} edges ({} resolved calls), {} imports",
+                 g.nodes.len(), sites, g.edges.len(), calls, g.imports.len()
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\rust.rs:727:
+             );
+             total_nodes += g.nodes.len();
+         }
+[31m-        assert!(total_nodes > 100, "suspiciously thin self-render: {total_nodes} nodes");
+[0m[32m+        assert!(
+[0m[32m+            total_nodes > 100,
+[0m[32m+            "suspiciously thin self-render: {total_nodes} nodes"
+[0m[32m+        );
+[0m     }
+ }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\snapshot.rs:10:
+ 
+ use cg_ir::{EdgeKind, GraphEdge, GraphNode, NodeKey, NodeKind, Snapshot, SnapshotStats};
+ 
+[31m-use crate::{FileGraph};
+[0m[32m+use crate::FileGraph;
+[0m 
+ /// Flatten one or more per-file `FileGraph`s into a single `Snapshot`.
+ ///
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\snapshot.rs:26:
+         for (key, spec) in fg.nodes {
+             if spec.is_definition {
+                 // Extract depth from attrs.extra (set during extraction).
+[31m-                let depth = spec.attrs.extra.get("depth")
+[0m[32m+                let depth = spec
+[0m[32m+                    .attrs
+[0m[32m+                    .extra
+[0m[32m+                    .get("depth")
+[0m                     .and_then(|v| v.as_u64())
+                     .unwrap_or(0) as u32;
+                 node_map.entry(key.clone()).or_insert(GraphNode {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\text.rs:13:
+         }
+         out.push(l.trim().to_string());
+     }
+[31m-    if out.is_empty() { None } else { Some(out.join(" ")) }
+[0m[32m+    if out.is_empty() {
+[0m[32m+        None
+[0m[32m+    } else {
+[0m[32m+        Some(out.join(" "))
+[0m[32m+    }
+[0m }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:47:
+     }
+     let language: tree_sitter::Language = (profile.grammar)();
+     let mut parser = tree_sitter::Parser::new();
+[31m-    parser.set_language(&language).map_err(|_| ExtractError::LanguageInit)?;
+[0m[31m-    let tree = parser.parse(&file.text, None).ok_or(ExtractError::ParseFailed)?;
+[0m[32m+    parser
+[0m[32m+        .set_language(&language)
+[0m[32m+        .map_err(|_| ExtractError::LanguageInit)?;
+[0m[32m+    let tree = parser
+[0m[32m+        .parse(&file.text, None)
+[0m[32m+        .ok_or(ExtractError::ParseFailed)?;
+[0m 
+     let file_key = NodeKey::Symbol {
+         lang: profile.lang,
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:163:
+                             .alias
+                             .clone()
+                             .unwrap_or_else(|| r.path.last().cloned().unwrap_or_default());
+[31m-                        ctx.simple_imports.insert(name, r.path.join(profile.qual_sep));
+[0m[32m+                        ctx.simple_imports
+[0m[32m+                            .insert(name, r.path.join(profile.qual_sep));
+[0m                     }
+                 }
+             }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:185:
+             }
+ 
+             ItemClass::Impl => {
+[31m-                let Some(impl_info) = profile.impl_info else { continue };
+[0m[31m-                let Some(info) = impl_info(child, ctx.src) else { continue };
+[0m[32m+                let Some(impl_info) = profile.impl_info else {
+[0m[32m+                    continue;
+[0m[32m+                };
+[0m[32m+                let Some(info) = impl_info(child, ctx.src) else {
+[0m[32m+                    continue;
+[0m[32m+                };
+[0m                 let key = emit_def(
+                     ctx,
+                     parent,
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:199:
+                 );
+                 emitted.push(key.clone());
+                 if let (Some(t), Some(node)) = (&info.trait_name, ctx.graph.nodes.get_mut(&key)) {
+[31m-                    node.attrs.extra.insert("impl_trait".into(), t.clone().into());
+[0m[32m+                    node.attrs
+[0m[32m+                        .extra
+[0m[32m+                        .insert("impl_trait".into(), t.clone().into());
+[0m                 }
+                 if let Some(body) = (profile.body_of)(child) {
+                     scope.push(info.type_name.clone());
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:254:
+                 // `mod foo;` — no inline body: record the declaration for the
+                 // resolver and mark the node as living in another file.
+                 let span = span_of(&ctx.file, node);
+[31m-                ctx.graph.mod_decls.push(ModDecl { name: extern_name, span });
+[0m[32m+                ctx.graph.mod_decls.push(ModDecl {
+[0m[32m+                    name: extern_name,
+[0m[32m+                    span,
+[0m[32m+                });
+[0m                 if let Some(n) = ctx.graph.nodes.get_mut(key) {
+                     n.attrs.extra.insert("external_file".into(), true.into());
+                 }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:366:
+     };
+     ctx.defs_qualified.insert(qualified, key.clone());
+     if profile.simple_resolvable.contains(&kind) {
+[31m-        ctx.defs_simple.entry(name.to_string()).or_default().push(key.clone());
+[0m[32m+        ctx.defs_simple
+[0m[32m+            .entry(name.to_string())
+[0m[32m+            .or_default()
+[0m[32m+            .push(key.clone());
+[0m     }
+     ctx.graph.nodes.insert(key.clone(), spec);
+     add_edge(ctx, EdgeKind::Contains, parent.clone(), key.clone(), None);
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:433:
+     bindings: &HashMap<String, u32>,
+ ) {
+     let profile = ctx.profile;
+[31m-    let Some(func) = (profile.call_target)(call) else { return };
+[0m[32m+    let Some(func) = (profile.call_target)(call) else {
+[0m[32m+        return;
+[0m[32m+    };
+[0m 
+     let callee = txt(&func, ctx.src).to_string();
+     let res = resolve_callee(ctx, scope, func, &callee);
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:475:
+             ast_kind: call.kind().to_string(),
+             span: Some(span_of(&ctx.file, call)),
+             is_definition: false,
+[31m-            attrs: NodeAttrs { extra, ..Default::default() },
+[0m[32m+            attrs: NodeAttrs {
+[0m[32m+                extra,
+[0m[32m+                ..Default::default()
+[0m[32m+            },
+[0m         },
+     );
+     add_edge(ctx, EdgeKind::Contains, ancestor.clone(), key.clone(), None);
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:482:
+     if let Some(target) = res.target {
+[31m-        add_edge(ctx, EdgeKind::Calls, key, target, Some(span_of(&ctx.file, call)));
+[0m[32m+        add_edge(
+[0m[32m+            ctx,
+[0m[32m+            EdgeKind::Calls,
+[0m[32m+            key,
+[0m[32m+            target,
+[0m[32m+            Some(span_of(&ctx.file, call)),
+[0m[32m+        );
+[0m     }
+ }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:501:
+     match (profile.callee_shape)(func, ctx.src) {
+         CalleeShape::Simple => {
+             if let Some(k) = unique_simple(ctx, callee) {
+[31m-                return Resolution { label: short(), tag: "same_file", target: Some(k), hint: None };
+[0m[32m+                return Resolution {
+[0m[32m+                    label: short(),
+[0m[32m+                    tag: "same_file",
+[0m[32m+                    target: Some(k),
+[0m[32m+                    hint: None,
+[0m[32m+                };
+[0m             }
+             if let Some(path) = ctx.simple_imports.get(callee) {
+                 return Resolution {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:511:
+                     hint: Some(path.clone()),
+                 };
+             }
+[31m-            Resolution { label: short(), tag: "unresolved", target: None, hint: None }
+[0m[32m+            Resolution {
+[0m[32m+                label: short(),
+[0m[32m+                tag: "unresolved",
+[0m[32m+                target: None,
+[0m[32m+                hint: None,
+[0m[32m+            }
+[0m         }
+         CalleeShape::Path => {
+             if let Some(k) = ctx.defs_qualified.get(callee) {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:518:
+[31m-                return Resolution { label: short(), tag: "same_file", target: Some(k.clone()), hint: None };
+[0m[32m+                return Resolution {
+[0m[32m+                    label: short(),
+[0m[32m+                    tag: "same_file",
+[0m[32m+                    target: Some(k.clone()),
+[0m[32m+                    hint: None,
+[0m[32m+                };
+[0m             }
+             for root in profile.path_root_strip {
+                 if let Some(stripped) = callee.strip_prefix(&format!("{root}{sep}")) {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:529:
+                     }
+                 }
+             }
+[31m-            Resolution { label: short(), tag: "path_unresolved", target: None, hint: Some(callee.into()) }
+[0m[32m+            Resolution {
+[0m[32m+                label: short(),
+[0m[32m+                tag: "path_unresolved",
+[0m[32m+                target: None,
+[0m[32m+                hint: Some(callee.into()),
+[0m[32m+            }
+[0m         }
+         CalleeShape::Method { receiver, method } => {
+             if profile.self_receiver == Some(receiver.as_str()) && !scope.is_empty() {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:570:
+     }
+ }
+ 
+[31m-fn add_edge(ctx: &mut Ctx<'_, '_>, kind: EdgeKind, source: NodeKey, target: NodeKey, span: Option<Span>) {
+[0m[31m-    let key = EdgeKey { kind, source: source.clone(), target: target.clone(), ordinal: 0 };
+[0m[31m-    ctx.graph.edges.insert(key, EdgeSpec { kind, span, weight: 1 });
+[0m[32m+fn add_edge(
+[0m[32m+    ctx: &mut Ctx<'_, '_>,
+[0m[32m+    kind: EdgeKind,
+[0m[32m+    source: NodeKey,
+[0m[32m+    target: NodeKey,
+[0m[32m+    span: Option<Span>,
+[0m[32m+) {
+[0m[32m+    let key = EdgeKey {
+[0m[32m+        kind,
+[0m[32m+        source: source.clone(),
+[0m[32m+        target: target.clone(),
+[0m[32m+        ordinal: 0,
+[0m[32m+    };
+[0m[32m+    ctx.graph.edges.insert(
+[0m[32m+        key,
+[0m[32m+        EdgeSpec {
+[0m[32m+            kind,
+[0m[32m+            span,
+[0m[32m+            weight: 1,
+[0m[32m+        },
+[0m[32m+    );
+[0m }
+ 
+ pub(crate) fn txt<'a>(n: &Node, src: &'a [u8]) -> &'a str {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\walk.rs:584:
+         file: file.into(),
+         start_byte: n.start_byte() as u32,
+         end_byte: n.end_byte() as u32,
+[31m-        start: Point { row: n.start_position().row as u32, col: n.start_position().column as u32 },
+[0m[31m-        end: Point { row: n.end_position().row as u32, col: n.end_position().column as u32 },
+[0m[32m+        start: Point {
+[0m[32m+            row: n.start_position().row as u32,
+[0m[32m+            col: n.start_position().column as u32,
+[0m[32m+        },
+[0m[32m+        end: Point {
+[0m[32m+            row: n.end_position().row as u32,
+[0m[32m+            col: n.end_position().column as u32,
+[0m[32m+        },
+[0m     }
+ }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\ir\src\delta.rs:1:
+[31m-use crate::{Edge, EdgeId, EdgeKey, EdgeKind, Node, NodeId, NodeAttrs, NodeKey, NodeKind, Span, Version};
+[0m[32m+use crate::{
+[0m[32m+    Edge, EdgeId, EdgeKey, EdgeKind, Node, NodeAttrs, NodeId, NodeKey, NodeKind, Span, Version,
+[0m[32m+};
+[0m use serde::{Deserialize, Serialize};
+ 
+ /// The only thing that crosses the wire after handshake. Initial load is a
+Diff in \\?\D:\proyects\graphcodetree\crates\ir\src\delta.rs:17:
+     BeginSnapshot,
+     EndSnapshot,
+     UpsertNode(Node),
+[31m-    RemoveNode {
+[0m[31m-        id: NodeId,
+[0m[31m-    },
+[0m[32m+    RemoveNode { id: NodeId },
+[0m     UpsertEdge(Edge),
+[31m-    RemoveEdge {
+[0m[31m-        id: EdgeId,
+[0m[31m-    },
+[0m[32m+    RemoveEdge { id: EdgeId },
+[0m }
+ 
+ /// A node with stable identity and no runtime ID. The store mints `NodeId`s.
+Diff in \\?\D:\proyects\graphcodetree\crates\ir\src\delta.rs:56:
+     UpsertEdge { key: EdgeKey, spec: EdgeSpec },
+     RemoveEdge { key: EdgeKey },
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\ir\src\edge.rs:34:
+ fn one() -> u32 {
+     1
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\ir\src\id.rs:66:
+     //#[serde(default)]
+     //pub nth: usize,
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\ir\src\intent.rs:8:
+ #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+ #[serde(tag = "intent", rename_all = "snake_case")]
+ pub enum EditIntent {
+[31m-    RenameSymbol { target: NodeId, new_name: String },
+[0m[32m+    RenameSymbol {
+[0m[32m+        target: NodeId,
+[0m[32m+        new_name: String,
+[0m[32m+    },
+[0m     /// Drag-and-drop: move an item to another module/file.
+[31m-    MoveNode { node: NodeId, new_parent: NodeId },
+[0m[32m+    MoveNode {
+[0m[32m+        node: NodeId,
+[0m[32m+        new_parent: NodeId,
+[0m[32m+    },
+[0m     /// Edge-drag, e.g. fn→fn with kind=Calls inserts a call expression
+     /// (plus an import if needed).
+[31m-    AddEdge { kind: EdgeKind, source: NodeId, target: NodeId },
+[0m[31m-    RemoveNode { node: NodeId },
+[0m[32m+    AddEdge {
+[0m[32m+        kind: EdgeKind,
+[0m[32m+        source: NodeId,
+[0m[32m+        target: NodeId,
+[0m[32m+    },
+[0m[32m+    RemoveNode {
+[0m[32m+        node: NodeId,
+[0m[32m+    },
+[0m     /// Remove the construct that created the edge (a call, an import).
+[31m-    RemoveEdge { kind: EdgeKind, source: NodeId, target: NodeId },
+[0m[32m+    RemoveEdge {
+[0m[32m+        kind: EdgeKind,
+[0m[32m+        source: NodeId,
+[0m[32m+        target: NodeId,
+[0m[32m+    },
+[0m }
+ 
+ #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+Diff in \\?\D:\proyects\graphcodetree\crates\ir\src\intent.rs:48:
+ #[serde(tag = "outcome", rename_all = "snake_case")]
+ pub enum IntentOutcome {
+     /// Applied to disk; the resulting delta arrives on the normal stream.
+[31m-    Applied { version: Version },
+[0m[32m+    Applied {
+[0m[32m+        version: Version,
+[0m[32m+    },
+[0m     /// dry_run=true: edits ready for review.
+[31m-    Pending { edits: WorkspaceEdit },
+[0m[31m-    Rejected { error: IntentError },
+[0m[32m+    Pending {
+[0m[32m+        edits: WorkspaceEdit,
+[0m[32m+    },
+[0m[32m+    Rejected {
+[0m[32m+        error: IntentError,
+[0m[32m+    },
+[0m }
+ 
+ #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, thiserror::Error)]
+Diff in \\?\D:\proyects\graphcodetree\crates\ir\src\intent.rs:58:
+ #[serde(tag = "error", rename_all = "snake_case")]
+ pub enum IntentError {
+     #[error("stale base version {base_version}, store is at {current}")]
+[31m-    StaleVersion { base_version: Version, current: Version },
+[0m[32m+    StaleVersion {
+[0m[32m+        base_version: Version,
+[0m[32m+        current: Version,
+[0m[32m+    },
+[0m     #[error("unknown node id {id}")]
+     UnknownNode { id: u32 },
+     #[error("intent not legal: {reason}")]
+Diff in \\?\D:\proyects\graphcodetree\crates\ir\src\intent.rs:66:
+     #[error("cannot compile to text edits: {reason}")]
+     Uncompilable { reason: String },
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\ir\src\lib.rs:135:
+         assert!(json.contains("\"op\": \"upsert_node\""));
+     }
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\ir\src\node.rs:80:
+     #[serde(default)]
+     pub attrs: NodeAttrs,
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\ir\src\view.rs:20:
+     /// grow without protocol changes.
+     pub filter: Option<String>,
+ }
+[32m+
+[0mDiff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:18:
+ pub use intern::Interner;
+ 
+ use cg_ir::{
+[31m-    Edge, EdgeId, EdgeKey, EdgeKind, GraphDelta, GraphOp, ImportRecord, KeyOp, ModDecl,
+[0m[31m-    Node, NodeId, NodeKey, NodeKind, Version, ViewSpec,
+[0m[32m+    Edge, EdgeId, EdgeKey, EdgeKind, GraphDelta, GraphOp, ImportRecord, KeyOp, ModDecl, Node,
+[0m[32m+    NodeId, NodeKey, NodeKind, Version, ViewSpec,
+[0m };
+ use std::collections::HashMap;
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:27:
+ pub enum StoreError {
+     #[error("version mismatch: base={base}, current={current}")]
+     VersionMismatch { base: Version, current: Version },
+[31m-    #[error("unknown node id {0}")] UnknownNode(NodeId),
+[0m[31m-    #[error("unknown edge id {0}")] UnknownEdge(EdgeId),
+[0m[32m+    #[error("unknown node id {0}")]
+[0m[32m+    UnknownNode(NodeId),
+[0m[32m+    #[error("unknown edge id {0}")]
+[0m[32m+    UnknownEdge(EdgeId),
+[0m }
+ 
+ #[derive(Debug)]
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:47:
+ impl GraphStore {
+     pub fn new() -> Self {
+         Self {
+[31m-            version: 0, nodes: HashMap::new(), edges: HashMap::new(),
+[0m[31m-            interner: Interner::new(), imports: HashMap::new(),
+[0m[31m-            mod_decls: HashMap::new(), by_kind: HashMap::new(),
+[0m[31m-            out_edges: HashMap::new(), in_edges: HashMap::new(),
+[0m[32m+            version: 0,
+[0m[32m+            nodes: HashMap::new(),
+[0m[32m+            edges: HashMap::new(),
+[0m[32m+            interner: Interner::new(),
+[0m[32m+            imports: HashMap::new(),
+[0m[32m+            mod_decls: HashMap::new(),
+[0m[32m+            by_kind: HashMap::new(),
+[0m[32m+            out_edges: HashMap::new(),
+[0m[32m+            in_edges: HashMap::new(),
+[0m         }
+     }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:57:
+     // ─── Ingestion ───────────────���───────────────────────
+[31m-    pub fn ingest(&mut self, base_version: Version, ops: &[KeyOp],
+[0m[32m+    pub fn ingest(
+[0m[32m+        &mut self,
+[0m[32m+        base_version: Version,
+[0m[32m+        ops: &[KeyOp],
+[0m         file_imports: &[(std::path::PathBuf, Vec<ImportRecord>)],
+         file_mods: &[(std::path::PathBuf, Vec<ModDecl>)],
+     ) -> Result<GraphDelta, StoreError> {
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:62:
+         if base_version != self.version {
+[31m-            return Err(StoreError::VersionMismatch{base:base_version,current:self.version});
+[0m[32m+            return Err(StoreError::VersionMismatch {
+[0m[32m+                base: base_version,
+[0m[32m+                current: self.version,
+[0m[32m+            });
+[0m         }
+[31m-        for(p,r)in file_imports{self.imports.insert(p.clone(),r.clone());}
+[0m[31m-        for(p,d)in file_mods{self.mod_decls.insert(p.clone(),d.clone());}
+[0m[31m-        let mut out=Vec::with_capacity(ops.len());
+[0m[31m-        for op in ops{match op{
+[0m[31m-            KeyOp::UpsertNode{key,spec}=>{
+[0m[31m-                let id=self.interner.intern_node(key);
+[0m[31m-                let n=Node{id,kind:spec.kind,label:spec.label.clone(),
+[0m[31m-                    ast_kind:spec.ast_kind.clone(),span:spec.span.clone(),
+[0m[31m-                    is_definition:spec.is_definition,attrs:spec.attrs.clone()};
+[0m[31m-                self.nodes.insert(id,n.clone());self.by_kind.entry(spec.kind).or_default().push(id);
+[0m[31m-                out.push(GraphOp::UpsertNode(n));
+[0m[31m-            }
+[0m[31m-            KeyOp::RemoveNode{key}=>{
+[0m[31m-                if let Some(id)=self.interner.node_id(key){
+[0m[31m-                    self.nodes.remove(&id);self.interner.remove_node(key);
+[0m[31m-                    self.by_kind.retain(|_,ids|{ids.retain(|&i|i!=id);!ids.is_empty()});
+[0m[31m-                    self.out_edges.remove(&id);self.in_edges.remove(&id);
+[0m[32m+        for (p, r) in file_imports {
+[0m[32m+            self.imports.insert(p.clone(), r.clone());
+[0m[32m+        }
+[0m[32m+        for (p, d) in file_mods {
+[0m[32m+            self.mod_decls.insert(p.clone(), d.clone());
+[0m[32m+        }
+[0m[32m+        let mut out = Vec::with_capacity(ops.len());
+[0m[32m+        for op in ops {
+[0m[32m+            match op {
+[0m[32m+                KeyOp::UpsertNode { key, spec } => {
+[0m[32m+                    let id = self.interner.intern_node(key);
+[0m[32m+                    let n = Node {
+[0m[32m+                        id,
+[0m[32m+                        kind: spec.kind,
+[0m[32m+                        label: spec.label.clone(),
+[0m[32m+                        ast_kind: spec.ast_kind.clone(),
+[0m[32m+                        span: spec.span.clone(),
+[0m[32m+                        is_definition: spec.is_definition,
+[0m[32m+                        attrs: spec.attrs.clone(),
+[0m[32m+                    };
+[0m[32m+                    self.nodes.insert(id, n.clone());
+[0m[32m+                    self.by_kind.entry(spec.kind).or_default().push(id);
+[0m[32m+                    out.push(GraphOp::UpsertNode(n));
+[0m                 }
+[31m-                out.push(GraphOp::RemoveNode{id:NodeId(0)});
+[0m[31m-            }
+[0m[31m-            KeyOp::UpsertEdge{key,spec}=>{
+[0m[31m-                let Some(sid)=self.interner.node_id(&key.source)else{
+[0m[31m-                    self.interner.intern_node(&key.source);continue;
+[0m[31m-                };
+[0m[31m-                let Some(tid)=self.interner.node_id(&key.target)else{
+[0m[31m-                    self.interner.intern_node(&key.target);continue;
+[0m[31m-                };
+[0m[31m-                let id=self.interner.intern_edge(key);
+[0m[31m-                let e=Edge{id,kind:key.kind,source:sid,target:tid,
+[0m[31m-                    span:spec.span.clone(),weight:spec.weight};
+[0m[31m-                self.edges.insert(id,e.clone());
+[0m[31m-                self.out_edges.entry(sid).or_default().push(id);
+[0m[31m-                self.in_edges.entry(tid).or_default().push(id);
+[0m[31m-                out.push(GraphOp::UpsertEdge(e));
+[0m[31m-            }
+[0m[31m-            KeyOp::RemoveEdge{key}=>{
+[0m[31m-                if let Some(id)=self.interner.edge_id(key){
+[0m[31m-                    if self.edges.remove(&id).is_some(){
+[0m[31m-                        self.out_edges.retain(|_,ids|{ids.retain(|&e|e!=id);!ids.is_empty()});
+[0m[31m-                        self.in_edges.retain(|_,ids|{ids.retain(|&e|e!=id);!ids.is_empty()});
+[0m[32m+                KeyOp::RemoveNode { key } => {
+[0m[32m+                    if let Some(id) = self.interner.node_id(key) {
+[0m[32m+                        self.nodes.remove(&id);
+[0m[32m+                        self.interner.remove_node(key);
+[0m[32m+                        self.by_kind.retain(|_, ids| {
+[0m[32m+                            ids.retain(|&i| i != id);
+[0m[32m+                            !ids.is_empty()
+[0m[32m+                        });
+[0m[32m+                        self.out_edges.remove(&id);
+[0m[32m+                        self.in_edges.remove(&id);
+[0m                     }
+[31m-                    self.interner.remove_edge(key);
+[0m[32m+                    out.push(GraphOp::RemoveNode { id: NodeId(0) });
+[0m                 }
+[31m-                out.push(GraphOp::RemoveEdge{id:EdgeId(0)});
+[0m[32m+                KeyOp::UpsertEdge { key, spec } => {
+[0m[32m+                    let Some(sid) = self.interner.node_id(&key.source) else {
+[0m[32m+                        self.interner.intern_node(&key.source);
+[0m[32m+                        continue;
+[0m[32m+                    };
+[0m[32m+                    let Some(tid) = self.interner.node_id(&key.target) else {
+[0m[32m+                        self.interner.intern_node(&key.target);
+[0m[32m+                        continue;
+[0m[32m+                    };
+[0m[32m+                    let id = self.interner.intern_edge(key);
+[0m[32m+                    let e = Edge {
+[0m[32m+                        id,
+[0m[32m+                        kind: key.kind,
+[0m[32m+                        source: sid,
+[0m[32m+                        target: tid,
+[0m[32m+                        span: spec.span.clone(),
+[0m[32m+                        weight: spec.weight,
+[0m[32m+                    };
+[0m[32m+                    self.edges.insert(id, e.clone());
+[0m[32m+                    self.out_edges.entry(sid).or_default().push(id);
+[0m[32m+                    self.in_edges.entry(tid).or_default().push(id);
+[0m[32m+                    out.push(GraphOp::UpsertEdge(e));
+[0m[32m+                }
+[0m[32m+                KeyOp::RemoveEdge { key } => {
+[0m[32m+                    if let Some(id) = self.interner.edge_id(key) {
+[0m[32m+                        if self.edges.remove(&id).is_some() {
+[0m[32m+                            self.out_edges.retain(|_, ids| {
+[0m[32m+                                ids.retain(|&e| e != id);
+[0m[32m+                                !ids.is_empty()
+[0m[32m+                            });
+[0m[32m+                            self.in_edges.retain(|_, ids| {
+[0m[32m+                                ids.retain(|&e| e != id);
+[0m[32m+                                !ids.is_empty()
+[0m[32m+                            });
+[0m[32m+                        }
+[0m[32m+                        self.interner.remove_edge(key);
+[0m[32m+                    }
+[0m[32m+                    out.push(GraphOp::RemoveEdge { id: EdgeId(0) });
+[0m[32m+                }
+[0m             }
+[31m-        }}
+[0m[31m-        for op in&mut out{
+[0m[31m-            if let GraphOp::UpsertEdge(ref mut e)=op{
+[0m[31m-                if self.interner.lookup_node(e.source).is_none()||self.interner.lookup_node(e.target).is_none(){
+[0m[31m-                    if let Some(k)=self.interner.lookup_edge(e.id){
+[0m[31m-                        if let(Some(s),Some(t))=(self.interner.node_id(&k.source),self.interner.node_id(&k.target)){
+[0m[31m-                            let u=Edge{source:s,target:t,..e.clone()};
+[0m[31m-                            self.edges.insert(e.id,u.clone());*e=u;
+[0m[32m+        }
+[0m[32m+        for op in &mut out {
+[0m[32m+            if let GraphOp::UpsertEdge(ref mut e) = op {
+[0m[32m+                if self.interner.lookup_node(e.source).is_none()
+[0m[32m+                    || self.interner.lookup_node(e.target).is_none()
+[0m[32m+                {
+[0m[32m+                    if let Some(k) = self.interner.lookup_edge(e.id) {
+[0m[32m+                        if let (Some(s), Some(t)) = (
+[0m[32m+                            self.interner.node_id(&k.source),
+[0m[32m+                            self.interner.node_id(&k.target),
+[0m[32m+                        ) {
+[0m[32m+                            let u = Edge {
+[0m[32m+                                source: s,
+[0m[32m+                                target: t,
+[0m[32m+                                ..e.clone()
+[0m[32m+                            };
+[0m[32m+                            self.edges.insert(e.id, u.clone());
+[0m[32m+                            *e = u;
+[0m                         }
+                     }
+                 }
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:121:
+             }
+         }
+[31m-        self.version+=1;
+[0m[31m-        Ok(GraphDelta{base_version:base_version,version:self.version,ops:out})
+[0m[32m+        self.version += 1;
+[0m[32m+        Ok(GraphDelta {
+[0m[32m+            base_version: base_version,
+[0m[32m+            version: self.version,
+[0m[32m+            ops: out,
+[0m[32m+        })
+[0m     }
+ 
+     // ─── Apply (for enrichment deltas) ────────────────────
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:128:
+     pub fn apply(&mut self, delta: &GraphDelta) -> Result<GraphDelta, StoreError> {
+         if delta.base_version != self.version {
+[31m-            return Err(StoreError::VersionMismatch{base:delta.base_version,current:self.version});
+[0m[32m+            return Err(StoreError::VersionMismatch {
+[0m[32m+                base: delta.base_version,
+[0m[32m+                current: self.version,
+[0m[32m+            });
+[0m         }
+         let mut out = Vec::with_capacity(delta.ops.len());
+[31m-        for op in &delta.ops { match op {
+[0m[31m-            GraphOp::UpsertNode(node) => {
+[0m[31m-                self.interner.intern_node(&NodeKey::Symbol{
+[0m[31m-                    lang:cg_ir::Lang::Rust,file:std::path::PathBuf::new(),
+[0m[31m-                    qualified_name:node.label.clone(),kind:node.kind,disambiguator:0});
+[0m[31m-                self.nodes.insert(node.id, node.clone());
+[0m[31m-                self.by_kind.entry(node.kind).or_default().push(node.id);
+[0m[31m-                out.push(GraphOp::UpsertNode(node.clone()));
+[0m[31m-            }
+[0m[31m-            GraphOp::UpsertEdge(edge) => {
+[0m[31m-                if !self.nodes.contains_key(&edge.source)||!self.nodes.contains_key(&edge.target){
+[0m[31m-                    continue;
+[0m[32m+        for op in &delta.ops {
+[0m[32m+            match op {
+[0m[32m+                GraphOp::UpsertNode(node) => {
+[0m[32m+                    self.interner.intern_node(&NodeKey::Symbol {
+[0m[32m+                        lang: cg_ir::Lang::Rust,
+[0m[32m+                        file: std::path::PathBuf::new(),
+[0m[32m+                        qualified_name: node.label.clone(),
+[0m[32m+                        kind: node.kind,
+[0m[32m+                        disambiguator: 0,
+[0m[32m+                    });
+[0m[32m+                    self.nodes.insert(node.id, node.clone());
+[0m[32m+                    self.by_kind.entry(node.kind).or_default().push(node.id);
+[0m[32m+                    out.push(GraphOp::UpsertNode(node.clone()));
+[0m                 }
+[31m-                self.edges.insert(edge.id, edge.clone());
+[0m[31m-                self.out_edges.entry(edge.source).or_default().push(edge.id);
+[0m[31m-                self.in_edges.entry(edge.target).or_default().push(edge.id);
+[0m[31m-                out.push(GraphOp::UpsertEdge(edge.clone()));
+[0m[31m-            }
+[0m[31m-            GraphOp::RemoveNode{id}=>{
+[0m[31m-                if self.nodes.remove(id).is_some(){
+[0m[31m-                    self.by_kind.retain(|_,ids|{ids.retain(|&i|i!=*id);!ids.is_empty()});
+[0m[31m-                    self.out_edges.remove(id);self.in_edges.remove(id);
+[0m[32m+                GraphOp::UpsertEdge(edge) => {
+[0m[32m+                    if !self.nodes.contains_key(&edge.source)
+[0m[32m+                        || !self.nodes.contains_key(&edge.target)
+[0m[32m+                    {
+[0m[32m+                        continue;
+[0m[32m+                    }
+[0m[32m+                    self.edges.insert(edge.id, edge.clone());
+[0m[32m+                    self.out_edges.entry(edge.source).or_default().push(edge.id);
+[0m[32m+                    self.in_edges.entry(edge.target).or_default().push(edge.id);
+[0m[32m+                    out.push(GraphOp::UpsertEdge(edge.clone()));
+[0m                 }
+[31m-                out.push(GraphOp::RemoveNode{id:*id});
+[0m[31m-            }
+[0m[31m-            GraphOp::RemoveEdge{id}=>{
+[0m[31m-                if self.edges.remove(id).is_some(){
+[0m[31m-                    self.out_edges.retain(|_,ids|{ids.retain(|&e|e!=*id);!ids.is_empty()});
+[0m[31m-                    self.in_edges.retain(|_,ids|{ids.retain(|&e|e!=*id);!ids.is_empty()});
+[0m[32m+                GraphOp::RemoveNode { id } => {
+[0m[32m+                    if self.nodes.remove(id).is_some() {
+[0m[32m+                        self.by_kind.retain(|_, ids| {
+[0m[32m+                            ids.retain(|&i| i != *id);
+[0m[32m+                            !ids.is_empty()
+[0m[32m+                        });
+[0m[32m+                        self.out_edges.remove(id);
+[0m[32m+                        self.in_edges.remove(id);
+[0m[32m+                    }
+[0m[32m+                    out.push(GraphOp::RemoveNode { id: *id });
+[0m                 }
+[31m-                out.push(GraphOp::RemoveEdge{id:*id});
+[0m[32m+                GraphOp::RemoveEdge { id } => {
+[0m[32m+                    if self.edges.remove(id).is_some() {
+[0m[32m+                        self.out_edges.retain(|_, ids| {
+[0m[32m+                            ids.retain(|&e| e != *id);
+[0m[32m+                            !ids.is_empty()
+[0m[32m+                        });
+[0m[32m+                        self.in_edges.retain(|_, ids| {
+[0m[32m+                            ids.retain(|&e| e != *id);
+[0m[32m+                            !ids.is_empty()
+[0m[32m+                        });
+[0m[32m+                    }
+[0m[32m+                    out.push(GraphOp::RemoveEdge { id: *id });
+[0m[32m+                }
+[0m[32m+                GraphOp::BeginSnapshot | GraphOp::EndSnapshot => out.push(op.clone()),
+[0m             }
+[31m-            GraphOp::BeginSnapshot|GraphOp::EndSnapshot=>out.push(op.clone()),
+[0m[31m-        }}
+[0m[31m-        self.version+=1;
+[0m[31m-        Ok(GraphDelta{base_version:delta.base_version,version:self.version,ops:out})
+[0m[32m+        }
+[0m[32m+        self.version += 1;
+[0m[32m+        Ok(GraphDelta {
+[0m[32m+            base_version: delta.base_version,
+[0m[32m+            version: self.version,
+[0m[32m+            ops: out,
+[0m[32m+        })
+[0m     }
+ 
+     // ─── Queries ──────────────────────────────────────────
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:172:
+[31m-    pub fn version(&self)->Version{self.version}
+[0m[31m-    pub fn node(&self,id:NodeId)->Option<&Node>{self.nodes.get(&id)}
+[0m[31m-    pub fn edge(&self,id:EdgeId)->Option<&Edge>{self.edges.get(&id)}
+[0m[31m-    pub fn lookup_node(&self,key:&NodeKey)->Option<NodeId>{self.interner.node_id(key)}
+[0m[32m+    pub fn version(&self) -> Version {
+[0m[32m+        self.version
+[0m[32m+    }
+[0m[32m+    pub fn node(&self, id: NodeId) -> Option<&Node> {
+[0m[32m+        self.nodes.get(&id)
+[0m[32m+    }
+[0m[32m+    pub fn edge(&self, id: EdgeId) -> Option<&Edge> {
+[0m[32m+        self.edges.get(&id)
+[0m[32m+    }
+[0m[32m+    pub fn lookup_node(&self, key: &NodeKey) -> Option<NodeId> {
+[0m[32m+        self.interner.node_id(key)
+[0m[32m+    }
+[0m     /// Reverse-lookup: given a node ID, return its key.
+     pub fn lookup_node_key(&self, id: NodeId) -> Option<&NodeKey> {
+         self.interner.lookup_node(id)
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:179:
+     }
+[31m-    pub fn lookup_edge(&self,key:&EdgeKey)->Option<EdgeId>{self.interner.edge_id(key)}
+[0m[31m-    pub fn edges_from(&self,id:NodeId)->Vec<&Edge>{
+[0m[31m-        self.out_edges.get(&id).map(|ids|ids.iter().filter_map(|e|self.edges.get(e)).collect()).unwrap_or_default()
+[0m[32m+    pub fn lookup_edge(&self, key: &EdgeKey) -> Option<EdgeId> {
+[0m[32m+        self.interner.edge_id(key)
+[0m     }
+[31m-    pub fn edges_to(&self,id:NodeId)->Vec<&Edge>{
+[0m[31m-        self.in_edges.get(&id).map(|ids|ids.iter().filter_map(|e|self.edges.get(e)).collect()).unwrap_or_default()
+[0m[32m+    pub fn edges_from(&self, id: NodeId) -> Vec<&Edge> {
+[0m[32m+        self.out_edges
+[0m[32m+            .get(&id)
+[0m[32m+            .map(|ids| ids.iter().filter_map(|e| self.edges.get(e)).collect())
+[0m[32m+            .unwrap_or_default()
+[0m     }
+[31m-    pub fn edges_of_kind(&self,k:EdgeKind)->Vec<&Edge>{
+[0m[31m-        self.edges.values().filter(|e|e.kind==k).collect()
+[0m[32m+    pub fn edges_to(&self, id: NodeId) -> Vec<&Edge> {
+[0m[32m+        self.in_edges
+[0m[32m+            .get(&id)
+[0m[32m+            .map(|ids| ids.iter().filter_map(|e| self.edges.get(e)).collect())
+[0m[32m+            .unwrap_or_default()
+[0m     }
+[31m-    pub fn nodes_by_kind(&self,k:NodeKind)->Vec<&Node>{
+[0m[31m-        self.by_kind.get(&k).map(|ids|ids.iter().filter_map(|i|self.nodes.get(i)).collect()).unwrap_or_default()
+[0m[32m+    pub fn edges_of_kind(&self, k: EdgeKind) -> Vec<&Edge> {
+[0m[32m+        self.edges.values().filter(|e| e.kind == k).collect()
+[0m     }
+[31m-    pub fn all_nodes(&self)->Vec<&Node>{self.nodes.values().collect()}
+[0m[31m-    pub fn all_edges(&self)->Vec<&Edge>{self.edges.values().collect()}
+[0m[31m-    pub fn imports_for(&self,p:&std::path::Path)->Option<&[ImportRecord]>{
+[0m[31m-        self.imports.get(p).map(|v|v.as_slice())
+[0m[32m+    pub fn nodes_by_kind(&self, k: NodeKind) -> Vec<&Node> {
+[0m[32m+        self.by_kind
+[0m[32m+            .get(&k)
+[0m[32m+            .map(|ids| ids.iter().filter_map(|i| self.nodes.get(i)).collect())
+[0m[32m+            .unwrap_or_default()
+[0m     }
+[31m-    pub fn mod_decls_for(&self,p:&std::path::Path)->Option<&[ModDecl]>{
+[0m[31m-        self.mod_decls.get(p).map(|v|v.as_slice())
+[0m[32m+    pub fn all_nodes(&self) -> Vec<&Node> {
+[0m[32m+        self.nodes.values().collect()
+[0m     }
+[31m-    pub fn lookup_qualified(&self,qn:&str)->Vec<(NodeId,&Node)>{
+[0m[31m-        self.nodes.iter().filter(|(_,n)|{
+[0m[31m-            self.interner.lookup_node(n.id).map(|key|
+[0m[31m-                matches!(key,NodeKey::Symbol{qualified_name,..}if qualified_name==qn)
+[0m[31m-            ).unwrap_or(false)
+[0m[31m-        }).map(|(&id,n)|(id,n)).collect()
+[0m[32m+    pub fn all_edges(&self) -> Vec<&Edge> {
+[0m[32m+        self.edges.values().collect()
+[0m     }
+[32m+    pub fn imports_for(&self, p: &std::path::Path) -> Option<&[ImportRecord]> {
+[0m[32m+        self.imports.get(p).map(|v| v.as_slice())
+[0m[32m+    }
+[0m[32m+    pub fn mod_decls_for(&self, p: &std::path::Path) -> Option<&[ModDecl]> {
+[0m[32m+        self.mod_decls.get(p).map(|v| v.as_slice())
+[0m[32m+    }
+[0m[32m+    pub fn lookup_qualified(&self, qn: &str) -> Vec<(NodeId, &Node)> {
+[0m[32m+        self.nodes
+[0m[32m+            .iter()
+[0m[32m+            .filter(|(_, n)| {
+[0m[32m+                self.interner
+[0m[32m+                    .lookup_node(n.id)
+[0m[32m+                    .map(
+[0m[32m+                        |key| matches!(key,NodeKey::Symbol{qualified_name,..}if qualified_name==qn),
+[0m[32m+                    )
+[0m[32m+                    .unwrap_or(false)
+[0m[32m+            })
+[0m[32m+            .map(|(&id, n)| (id, n))
+[0m[32m+            .collect()
+[0m[32m+    }
+[0m 
+     pub fn to_snapshot(&self) -> cg_ir::Snapshot {
+[31m-        let nodes:Vec<_>=self.nodes.values().filter(|n|n.is_definition).map(|n|{
+[0m[31m-            let file=self.interner.lookup_node(n.id).map(|k|match k{
+[0m[31m-                NodeKey::Symbol{file,..}=>file.clone(),
+[0m[31m-                NodeKey::Anchored{ancestor,..}=>match ancestor.as_ref(){
+[0m[31m-                    NodeKey::Symbol{file,..}=>file.clone(),_=>std::path::PathBuf::new()},
+[0m[31m-            }).unwrap_or_default();
+[0m[31m-            let key=self.interner.lookup_node(n.id).cloned().unwrap_or(
+[0m[31m-                NodeKey::Symbol{lang:cg_ir::Lang::Rust,file:file.clone(),
+[0m[31m-                    qualified_name:n.label.clone(),kind:n.kind,disambiguator:0});
+[0m[31m-            cg_ir::GraphNode{key,kind:n.kind,label:n.label.clone(),
+[0m[31m-                ast_kind:n.ast_kind.clone(),span:n.span.clone(),
+[0m[31m-                attrs:n.attrs.clone(),file,
+[0m[31m-                depth:n.attrs.extra.get("depth").and_then(|v|v.as_u64()).unwrap_or(0)as u32}
+[0m[31m-        }).collect();
+[0m[31m-        let edges:Vec<_>=self.edges.values().map(|e|{
+[0m[31m-            let sk=self.interner.lookup_node(e.source).cloned().unwrap_or(
+[0m[31m-                NodeKey::Symbol{lang:cg_ir::Lang::Rust,file:std::path::PathBuf::new(),
+[0m[31m-                    qualified_name:String::new(),kind:NodeKind::Function,disambiguator:0});
+[0m[31m-            let tk=self.interner.lookup_node(e.target).cloned().unwrap_or(
+[0m[31m-                NodeKey::Symbol{lang:cg_ir::Lang::Rust,file:std::path::PathBuf::new(),
+[0m[31m-                    qualified_name:String::new(),kind:NodeKind::Function,disambiguator:0});
+[0m[31m-            cg_ir::GraphEdge{kind:e.kind,source:sk,target:tk,
+[0m[31m-                span:e.span.clone(),weight:e.weight}
+[0m[31m-        }).collect();
+[0m[31m-        let nlen=nodes.len();let elen=edges.len();
+[0m[31m-        let mut fc = 0; let mut sc = 0; let mut tc = 0; let mut ic = 0;
+[0m[31m-        let mut cc = 0; let mut cntc = 0; let mut implc = 0; let mut dfc = 0;
+[0m[31m-        for n in &nodes{match n.kind{
+[0m[31m-            NodeKind::Function|NodeKind::Method=>fc+=1,
+[0m[31m-            NodeKind::Struct=>sc+=1,NodeKind::Trait=>tc+=1,
+[0m[31m-            NodeKind::ImplBlock=>ic+=1,_=>{}}
+[0m[32m+        let nodes: Vec<_> = self
+[0m[32m+            .nodes
+[0m[32m+            .values()
+[0m[32m+            .filter(|n| n.is_definition)
+[0m[32m+            .map(|n| {
+[0m[32m+                let file = self
+[0m[32m+                    .interner
+[0m[32m+                    .lookup_node(n.id)
+[0m[32m+                    .map(|k| match k {
+[0m[32m+                        NodeKey::Symbol { file, .. } => file.clone(),
+[0m[32m+                        NodeKey::Anchored { ancestor, .. } => match ancestor.as_ref() {
+[0m[32m+                            NodeKey::Symbol { file, .. } => file.clone(),
+[0m[32m+                            _ => std::path::PathBuf::new(),
+[0m[32m+                        },
+[0m[32m+                    })
+[0m[32m+                    .unwrap_or_default();
+[0m[32m+                let key = self
+[0m[32m+                    .interner
+[0m[32m+                    .lookup_node(n.id)
+[0m[32m+                    .cloned()
+[0m[32m+                    .unwrap_or(NodeKey::Symbol {
+[0m[32m+                        lang: cg_ir::Lang::Rust,
+[0m[32m+                        file: file.clone(),
+[0m[32m+                        qualified_name: n.label.clone(),
+[0m[32m+                        kind: n.kind,
+[0m[32m+                        disambiguator: 0,
+[0m[32m+                    });
+[0m[32m+                cg_ir::GraphNode {
+[0m[32m+                    key,
+[0m[32m+                    kind: n.kind,
+[0m[32m+                    label: n.label.clone(),
+[0m[32m+                    ast_kind: n.ast_kind.clone(),
+[0m[32m+                    span: n.span.clone(),
+[0m[32m+                    attrs: n.attrs.clone(),
+[0m[32m+                    file,
+[0m[32m+                    depth: n
+[0m[32m+                        .attrs
+[0m[32m+                        .extra
+[0m[32m+                        .get("depth")
+[0m[32m+                        .and_then(|v| v.as_u64())
+[0m[32m+                        .unwrap_or(0) as u32,
+[0m[32m+                }
+[0m[32m+            })
+[0m[32m+            .collect();
+[0m[32m+        let edges: Vec<_> = self
+[0m[32m+            .edges
+[0m[32m+            .values()
+[0m[32m+            .map(|e| {
+[0m[32m+                let sk = self
+[0m[32m+                    .interner
+[0m[32m+                    .lookup_node(e.source)
+[0m[32m+                    .cloned()
+[0m[32m+                    .unwrap_or(NodeKey::Symbol {
+[0m[32m+                        lang: cg_ir::Lang::Rust,
+[0m[32m+                        file: std::path::PathBuf::new(),
+[0m[32m+                        qualified_name: String::new(),
+[0m[32m+                        kind: NodeKind::Function,
+[0m[32m+                        disambiguator: 0,
+[0m[32m+                    });
+[0m[32m+                let tk = self
+[0m[32m+                    .interner
+[0m[32m+                    .lookup_node(e.target)
+[0m[32m+                    .cloned()
+[0m[32m+                    .unwrap_or(NodeKey::Symbol {
+[0m[32m+                        lang: cg_ir::Lang::Rust,
+[0m[32m+                        file: std::path::PathBuf::new(),
+[0m[32m+                        qualified_name: String::new(),
+[0m[32m+                        kind: NodeKind::Function,
+[0m[32m+                        disambiguator: 0,
+[0m[32m+                    });
+[0m[32m+                cg_ir::GraphEdge {
+[0m[32m+                    kind: e.kind,
+[0m[32m+                    source: sk,
+[0m[32m+                    target: tk,
+[0m[32m+                    span: e.span.clone(),
+[0m[32m+                    weight: e.weight,
+[0m[32m+                }
+[0m[32m+            })
+[0m[32m+            .collect();
+[0m[32m+        let nlen = nodes.len();
+[0m[32m+        let elen = edges.len();
+[0m[32m+        let mut fc = 0;
+[0m[32m+        let mut sc = 0;
+[0m[32m+        let mut tc = 0;
+[0m[32m+        let mut ic = 0;
+[0m[32m+        let mut cc = 0;
+[0m[32m+        let mut cntc = 0;
+[0m[32m+        let mut implc = 0;
+[0m[32m+        let mut dfc = 0;
+[0m[32m+        for n in &nodes {
+[0m[32m+            match n.kind {
+[0m[32m+                NodeKind::Function | NodeKind::Method => fc += 1,
+[0m[32m+                NodeKind::Struct => sc += 1,
+[0m[32m+                NodeKind::Trait => tc += 1,
+[0m[32m+                NodeKind::ImplBlock => ic += 1,
+[0m[32m+                _ => {}
+[0m[32m+            }
+[0m         }
+[31m-        for e in&edges{match e.kind{
+[0m[31m-            EdgeKind::Calls=>cc+=1,
+[0m[31m-            EdgeKind::Contains=>cntc+=1,
+[0m[31m-            EdgeKind::Implements=>implc+=1,
+[0m[31m-            EdgeKind::DataFlow=>dfc+=1,
+[0m[31m-            _=>{}}
+[0m[32m+        for e in &edges {
+[0m[32m+            match e.kind {
+[0m[32m+                EdgeKind::Calls => cc += 1,
+[0m[32m+                EdgeKind::Contains => cntc += 1,
+[0m[32m+                EdgeKind::Implements => implc += 1,
+[0m[32m+                EdgeKind::DataFlow => dfc += 1,
+[0m[32m+                _ => {}
+[0m[32m+            }
+[0m         }
+[31m-        cg_ir::Snapshot{nodes,edges,file_count:self.imports.len(),
+[0m[31m-            stats:cg_ir::SnapshotStats{total_nodes:nlen,total_edges:elen,
+[0m[31m-                function_count:fc,struct_count:sc,trait_count:tc,impl_count:ic,
+[0m[31m-                calls_edge_count:cc,contains_edge_count:cntc,
+[0m[31m-                impl_edge_count:implc,data_flow_edge_count:dfc}}
+[0m[32m+        cg_ir::Snapshot {
+[0m[32m+            nodes,
+[0m[32m+            edges,
+[0m[32m+            file_count: self.imports.len(),
+[0m[32m+            stats: cg_ir::SnapshotStats {
+[0m[32m+                total_nodes: nlen,
+[0m[32m+                total_edges: elen,
+[0m[32m+                function_count: fc,
+[0m[32m+                struct_count: sc,
+[0m[32m+                trait_count: tc,
+[0m[32m+                impl_count: ic,
+[0m[32m+                calls_edge_count: cc,
+[0m[32m+                contains_edge_count: cntc,
+[0m[32m+                impl_edge_count: implc,
+[0m[32m+                data_flow_edge_count: dfc,
+[0m[32m+            },
+[0m[32m+        }
+[0m     }
+ 
+[31m-    pub fn snapshot(&self,view:&ViewSpec)->GraphDelta{
+[0m[31m-        let mut ops=vec![GraphOp::BeginSnapshot];
+[0m[31m-        for n in self.nodes.values(){
+[0m[31m-            let ik=view.node_kinds.is_empty()||view.node_kinds.contains(&n.kind);
+[0m[31m-            let ir=view.root.map_or(true,|r|n.id==r||self.is_descendant_of(n.id,r));
+[0m[31m-            if ik&&ir{ops.push(GraphOp::UpsertNode(n.clone()));}
+[0m[32m+    pub fn snapshot(&self, view: &ViewSpec) -> GraphDelta {
+[0m[32m+        let mut ops = vec![GraphOp::BeginSnapshot];
+[0m[32m+        for n in self.nodes.values() {
+[0m[32m+            let ik = view.node_kinds.is_empty() || view.node_kinds.contains(&n.kind);
+[0m[32m+            let ir = view
+[0m[32m+                .root
+[0m[32m+                .map_or(true, |r| n.id == r || self.is_descendant_of(n.id, r));
+[0m[32m+            if ik && ir {
+[0m[32m+                ops.push(GraphOp::UpsertNode(n.clone()));
+[0m[32m+            }
+[0m         }
+[31m-        for e in self.edges.values(){
+[0m[31m-            let ik=view.edge_kinds.is_empty()||view.edge_kinds.contains(&e.kind);
+[0m[31m-            if ik&&self.nodes.contains_key(&e.source)&&self.nodes.contains_key(&e.target){
+[0m[32m+        for e in self.edges.values() {
+[0m[32m+            let ik = view.edge_kinds.is_empty() || view.edge_kinds.contains(&e.kind);
+[0m[32m+            if ik && self.nodes.contains_key(&e.source) && self.nodes.contains_key(&e.target) {
+[0m                 ops.push(GraphOp::UpsertEdge(e.clone()));
+             }
+         }
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:269:
+         ops.push(GraphOp::EndSnapshot);
+[31m-        GraphDelta{base_version:self.version,version:self.version,ops}
+[0m[32m+        GraphDelta {
+[0m[32m+            base_version: self.version,
+[0m[32m+            version: self.version,
+[0m[32m+            ops,
+[0m[32m+        }
+[0m     }
+ 
+[31m-    fn is_descendant_of(&self,node_id:NodeId,ancestor_id:NodeId)->bool{
+[0m[31m-        let mut c=node_id;loop{
+[0m[31m-            let p:Vec<_>=self.edges_to(c).into_iter().filter(|e|e.kind==EdgeKind::Contains).collect();
+[0m[31m-            match p.first(){Some(e)if e.source==ancestor_id=>return true,Some(e)=>c=e.source,_=>return false,}
+[0m[32m+    fn is_descendant_of(&self, node_id: NodeId, ancestor_id: NodeId) -> bool {
+[0m[32m+        let mut c = node_id;
+[0m[32m+        loop {
+[0m[32m+            let p: Vec<_> = self
+[0m[32m+                .edges_to(c)
+[0m[32m+                .into_iter()
+[0m[32m+                .filter(|e| e.kind == EdgeKind::Contains)
+[0m[32m+                .collect();
+[0m[32m+            match p.first() {
+[0m[32m+                Some(e) if e.source == ancestor_id => return true,
+[0m[32m+                Some(e) => c = e.source,
+[0m[32m+                _ => return false,
+[0m[32m+            }
+[0m         }
+     }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:280:
+[31m-    pub fn node_count(&self)->usize{self.nodes.len()}
+[0m[31m-    pub fn edge_count(&self)->usize{self.edges.len()}
+[0m[31m-    pub fn interner(&self)->&Interner{&self.interner}
+[0m[32m+    pub fn node_count(&self) -> usize {
+[0m[32m+        self.nodes.len()
+[0m[32m+    }
+[0m[32m+    pub fn edge_count(&self) -> usize {
+[0m[32m+        self.edges.len()
+[0m[32m+    }
+[0m[32m+    pub fn interner(&self) -> &Interner {
+[0m[32m+        &self.interner
+[0m[32m+    }
+[0m }
+ 
+ #[cfg(test)]
+Diff in \\?\D:\proyects\graphcodetree\crates\store\src\lib.rs:287:
+     use super::*;
+     use cg_ir::{EdgeSpec, Lang, NodeAttrs, NodeSpec, Point, Span};
+ 
+[31m-    fn mkfp(p:&str)->NodeKey{NodeKey::Symbol{lang:Lang::Rust,file:p.into(),
+[0m[31m-        qualified_name:String::new(),kind:NodeKind::File,disambiguator:0}}
+[0m[31m-    fn mkfn(p:&str,n:&str)->NodeKey{NodeKey::Symbol{lang:Lang::Rust,file:p.into(),
+[0m[31m-        qualified_name:n.into(),kind:NodeKind::Function,disambiguator:0}}
+[0m[31m-    fn mksp(f:&str)->Span{Span{file:f.into(),start_byte:0,end_byte:10,
+[0m[31m-        start:Point{row:0,col:0},end:Point{row:0,col:10}}}
+[0m[31m-    fn mkn(k:NodeKind,l:&str,d:bool)->NodeSpec{NodeSpec{kind:k,label:l.into(),
+[0m[31m-        ast_kind:"test".into(),span:Some(mksp("test.rs")),is_definition:d,
+[0m[31m-        attrs:NodeAttrs::default()}}
+[0m[31m-    fn mke(k:EdgeKind,w:u32)->EdgeSpec{EdgeSpec{kind:k,span:None,weight:w}}
+[0m[32m+    fn mkfp(p: &str) -> NodeKey {
+[0m[32m+        NodeKey::Symbol {
+[0m[32m+            lang: Lang::Rust,
+[0m[32m+            file: p.into(),
+[0m[32m+            qualified_name: String::new(),
+[0m[32m+            kind: NodeKind::File,
+[0m[32m+            disambiguator: 0,
+[0m[32m+        }
+[0m[32m+    }
+[0m[32m+    fn mkfn(p: &str, n: &str) -> NodeKey {
+[0m[32m+        NodeKey::Symbol {
+[0m[32m+            lang: Lang::Rust,
+[0m[32m+            file: p.into(),
+[0m[32m+            qualified_name: n.into(),
+[0m[32m+            kind: NodeKind::Function,
+[0m[32m+            disambiguator: 0,
+[0m[32m+        }
+[0m[32m+    }
+[0m[32m+    fn mksp(f: &str) -> Span {
+[0m[32m+        Span {
+[0m[32m+            file: f.into(),
+[0m[32m+            start_byte: 0,
+[0m[32m+            end_byte: 10,
+[0m[32m+            start: Point { row: 0, col: 0 },
+[0m[32m+            end: Point { row: 0, col: 10 },
+[0m[32m+        }
+[0m[32m+    }
+[0m[32m+    fn mkn(k: NodeKind, l: &str, d: bool) -> NodeSpec {
+[0m[32m+        NodeSpec {
+[0m[32m+            kind: k,
+[0m[32m+            label: l.into(),
+[0m[32m+            ast_kind: "test".into(),
+[0m[32m+            span: Some(mksp("test.rs")),
+[0m[32m+            is_definition: d,
+[0m[32m+            attrs: NodeAttrs::default(),
+[0m[32m+        }
+[0m[32m+    }
+[0m[32m+    fn mke(k: EdgeKind, w: u32) -> EdgeSpec {
+[0m[32m+        EdgeSpec {
+[0m[32m+            kind: k,
+[0m[32m+            span: None,
+[0m[32m+            weight: w,
+[0m[32m+        }
+[0m[32m+    }
+[0m 
+[31m-    #[test]fn ingest_nodes_and_edges(){
+[0m[31m-        let mut s=GraphStore::new();
+[0m[31m-        let fk=mkfp("src/lib.rs");let fk2=mkfn("src/lib.rs","greet");
+[0m[31m-        let d=s.ingest(0,&[KeyOp::UpsertNode{key:fk.clone(),spec:mkn(NodeKind::File,"lib.rs",false)},
+[0m[31m-            KeyOp::UpsertNode{key:fk2.clone(),spec:mkn(NodeKind::Function,"greet",true)},
+[0m[31m-            KeyOp::UpsertEdge{key:EdgeKey{kind:EdgeKind::Contains,source:fk.clone(),
+[0m[31m-                target:fk2.clone(),ordinal:0},spec:mke(EdgeKind::Contains,1)}],&[],&[]).unwrap();
+[0m[31m-        assert_eq!(d.base_version,0);assert_eq!(d.version,1);
+[0m[31m-        assert_eq!(s.node_count(),2);assert_eq!(s.edge_count(),1);
+[0m[31m-        assert_eq!(s.node(s.lookup_node(&fk).unwrap()).unwrap().label,"lib.rs");
+[0m[31m-        assert_eq!(s.node(s.lookup_node(&fk2).unwrap()).unwrap().label,"greet");
+[0m[32m+    #[test]
+[0m[32m+    fn ingest_nodes_and_edges() {
+[0m[32m+        let mut s = GraphStore::new();
+[0m[32m+        let fk = mkfp("src/lib.rs");
+[0m[32m+        let fk2 = mkfn("src/lib.rs", "greet");
+[0m[32m+        let d = s
+[0m[32m+            .ingest(
+[0m[32m+                0,
+[0m[32m+                &[
+[0m[32m+                    KeyOp::UpsertNode {
+[0m[32m+                        key: fk.clone(),
+[0m[32m+                        spec: mkn(NodeKind::File, "lib.rs", false),
+[0m[32m+                    },
+[0m[32m+                    KeyOp::UpsertNode {
+[0m[32m+                        key: fk2.clone(),
+[0m[32m+                        spec: mkn(NodeKind::Function, "greet", true),
+[0m[32m+                    },
+[0m[32m+                    KeyOp::UpsertEdge {
+[0m[32m+                        key: EdgeKey {
+[0m[32m+                            kind: EdgeKind::Contains,
+[0m[32m+                            source: fk.clone(),
+[0m[32m+                            target: fk2.clone(),
+[0m[32m+                            ordinal: 0,
+[0m[32m+                        },
+[0m[32m+                        spec: mke(EdgeKind::Contains, 1),
+[0m[32m+                    },
+[0m[32m+                ],
+[0m[32m+                &[],
+[0m[32m+                &[],
+[0m[32m+            )
+[0m[32m+            .unwrap();
+[0m[32m+        assert_eq!(d.base_version, 0);
+[0m[32m+        assert_eq!(d.version, 1);
+[0m[32m+        assert_eq!(s.node_count(), 2);
+[0m[32m+        assert_eq!(s.edge_count(), 1);
+[0m[32m+        assert_eq!(s.node(s.lookup_node(&fk).unwrap()).unwrap().label, "lib.rs");
+[0m[32m+        assert_eq!(s.node(s.lookup_node(&fk2).unwrap()).unwrap().label, "greet");
+[0m     }
+ 
+[31m-    #[test]fn ingest_with_imports(){
+[0m[31m-        let mut s=GraphStore::new();
+[0m[31m-        s.ingest(0,&[KeyOp::UpsertNode{key:mkfp("src/main.rs"),
+[0m[31m-            spec:mkn(NodeKind::File,"main.rs",false)}],
+[0m[31m-            &[(std::path::PathBuf::from("src/main.rs"),vec![ImportRecord{
+[0m[31m-                path:vec!["crate".into(),"greeter".into()],alias:None,
+[0m[31m-                glob:false,span:mksp("src/main.rs")}])],&[]).unwrap();
+[0m[31m-        assert_eq!(s.imports_for(std::path::Path::new("src/main.rs")).unwrap().len(),1);
+[0m[32m+    #[test]
+[0m[32m+    fn ingest_with_imports() {
+[0m[32m+        let mut s = GraphStore::new();
+[0m[32m+        s.ingest(
+[0m[32m+            0,
+[0m[32m+            &[KeyOp::UpsertNode {
+[0m[32m+                key: mkfp("src/main.rs"),
+[0m[32m+                spec: mkn(NodeKind::File, "main.rs", false),
+[0m[32m+            }],
+[0m[32m+            &[(
+[0m[32m+                std::path::PathBuf::from("src/main.rs"),
+[0m[32m+                vec![ImportRecord {
+[0m[32m+                    path: vec!["crate".into(), "greeter".into()],
+[0m[32m+                    alias: None,
+[0m[32m+                    glob: false,
+[0m[32m+                    span: mksp("src/main.rs"),
+[0m[32m+                }],
+[0m[32m+            )],
+[0m[32m+            &[],
+[0m[32m+        )
+[0m[32m+        .unwrap();
+[0m[32m+        assert_eq!(
+[0m[32m+            s.imports_for(std::path::Path::new("src/main.rs"))
+[0m[32m+                .unwrap()
+[0m[32m+                .len(),
+[0m[32m+            1
+[0m[32m+        );
+[0m     }
+ 
+[31m-    #[test]fn apply_enrichment_delta(){
+[0m[31m-        let mut s=GraphStore::new();
+[0m[31m-        let fk=mkfp("src/lib.rs");let fk2=mkfn("src/lib.rs","hello");
+[0m[31m-        s.ingest(0,&[KeyOp::UpsertNode{key:fk.clone(),spec:mkn(NodeKind::File,"lib.rs",false)},
+[0m[31m-            KeyOp::UpsertNode{key:fk2.clone(),spec:mkn(NodeKind::Function,"hello",true)}],&[],&[]).unwrap();
+[0m[31m-        let fid=s.lookup_node(&fk).unwrap();let f2id=s.lookup_node(&fk2).unwrap();
+[0m[31m-        let r=s.apply(&GraphDelta{base_version:1,version:2,
+[0m[31m-            ops:vec![GraphOp::UpsertEdge(Edge{id:EdgeId(99),kind:EdgeKind::Calls,
+[0m[31m-                source:fid,target:f2id,span:None,weight:1})]}).unwrap();
+[0m[31m-        assert_eq!(r.version,2);assert_eq!(s.edge_count(),1);
+[0m[32m+    #[test]
+[0m[32m+    fn apply_enrichment_delta() {
+[0m[32m+        let mut s = GraphStore::new();
+[0m[32m+        let fk = mkfp("src/lib.rs");
+[0m[32m+        let fk2 = mkfn("src/lib.rs", "hello");
+[0m[32m+        s.ingest(
+[0m[32m+            0,
+[0m[32m+            &[
+[0m[32m+                KeyOp::UpsertNode {
+[0m[32m+                    key: fk.clone(),
+[0m[32m+                    spec: mkn(NodeKind::File, "lib.rs", false),
+[0m[32m+                },
+[0m[32m+                KeyOp::UpsertNode {
+[0m[32m+                    key: fk2.clone(),
+[0m[32m+                    spec: mkn(NodeKind::Function, "hello", true),
+[0m[32m+                },
+[0m[32m+            ],
+[0m[32m+            &[],
+[0m[32m+            &[],
+[0m[32m+        )
+[0m[32m+        .unwrap();
+[0m[32m+        let fid = s.lookup_node(&fk).unwrap();
+[0m[32m+        let f2id = s.lookup_node(&fk2).unwrap();
+[0m[32m+        let r = s
+[0m[32m+            .apply(&GraphDelta {
+[0m[32m+                base_version: 1,
+[0m[32m+                version: 2,
+[0m[32m+                ops: vec![GraphOp::UpsertEdge(Edge {
+[0m[32m+                    id: EdgeId(99),
+[0m[32m+                    kind: EdgeKind::Calls,
+[0m[32m+                    source: fid,
+[0m[32m+                    target: f2id,
+[0m[32m+                    span: None,
+[0m[32m+                    weight: 1,
+[0m[32m+                })],
+[0m[32m+            })
+[0m[32m+            .unwrap();
+[0m[32m+        assert_eq!(r.version, 2);
+[0m[32m+        assert_eq!(s.edge_count(), 1);
+[0m     }
+ 
+[31m-    #[test]fn version_mismatch_rejected(){
+[0m[31m-        assert!(GraphStore::new().ingest(42,&[KeyOp::UpsertNode{
+[0m[31m-            key:mkfp("src/lib.rs"),spec:mkn(NodeKind::File,"lib.rs",false)}],&[],&[]).is_err());
+[0m[32m+    #[test]
+[0m[32m+    fn version_mismatch_rejected() {
+[0m[32m+        assert!(GraphStore::new()
+[0m[32m+            .ingest(
+[0m[32m+                42,
+[0m[32m+                &[KeyOp::UpsertNode {
+[0m[32m+                    key: mkfp("src/lib.rs"),
+[0m[32m+                    spec: mkn(NodeKind::File, "lib.rs", false)
+[0m[32m+                }],
+[0m[32m+                &[],
+[0m[32m+                &[]
+[0m[32m+            )
+[0m[32m+            .is_err());
+[0m     }
+ 
+[31m-    #[test]fn to_snapshot_produces_valid_output(){
+[0m[31m-        let mut s=GraphStore::new();
+[0m[31m-        let fk=mkfp("src/lib.rs");let fk2=mkfn("src/lib.rs","hello");
+[0m[31m-        s.ingest(0,&[KeyOp::UpsertNode{key:fk.clone(),spec:mkn(NodeKind::File,"lib.rs",false)},
+[0m[31m-            KeyOp::UpsertNode{key:fk2.clone(),spec:mkn(NodeKind::Function,"hello",true)},
+[0m[31m-            KeyOp::UpsertEdge{key:EdgeKey{kind:EdgeKind::Contains,source:fk.clone(),
+[0m[31m-                target:fk2.clone(),ordinal:0},spec:mke(EdgeKind::Contains,1)}],&[],&[]).unwrap();
+[0m[31m-        let snap=s.to_snapshot();
+[0m[31m-        assert_eq!(snap.nodes.len(),1);assert_eq!(snap.stats.function_count,1);
+[0m[31m-        assert_eq!(snap.stats.contains_edge_count,1);assert_eq!(snap.nodes[0].label,"hello");
+[0m[32m+    #[test]
+[0m[32m+    fn to_snapshot_produces_valid_output() {
+[0m[32m+        let mut s = GraphStore::new();
+[0m[32m+        let fk = mkfp("src/lib.rs");
+[0m[32m+        let fk2 = mkfn("src/lib.rs", "hello");
+[0m[32m+        s.ingest(
+[0m[32m+            0,
+[0m[32m+            &[
+[0m[32m+                KeyOp::UpsertNode {
+[0m[32m+                    key: fk.clone(),
+[0m[32m+                    spec: mkn(NodeKind::File, "lib.rs", false),
+[0m[32m+                },
+[0m[32m+                KeyOp::UpsertNode {
+[0m[32m+                    key: fk2.clone(),
+[0m[32m+                    spec: mkn(NodeKind::Function, "hello", true),
+[0m[32m+                },
+[0m[32m+                KeyOp::UpsertEdge {
+[0m[32m+                    key: EdgeKey {
+[0m[32m+                        kind: EdgeKind::Contains,
+[0m[32m+                        source: fk.clone(),
+[0m[32m+                        target: fk2.clone(),
+[0m[32m+                        ordinal: 0,
+[0m[32m+                    },
+[0m[32m+                    spec: mke(EdgeKind::Contains, 1),
+[0m[32m+                },
+[0m[32m+            ],
+[0m[32m+            &[],
+[0m[32m+            &[],
+[0m[32m+        )
+[0m[32m+        .unwrap();
+[0m[32m+        let snap = s.to_snapshot();
+[0m[32m+        assert_eq!(snap.nodes.len(), 1);
+[0m[32m+        assert_eq!(snap.stats.function_count, 1);
+[0m[32m+        assert_eq!(snap.stats.contains_edge_count, 1);
+[0m[32m+        assert_eq!(snap.nodes[0].label, "hello");
+[0m     }
+ }
+ 

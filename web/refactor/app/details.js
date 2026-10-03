@@ -1,7 +1,7 @@
 // ── Details panel rendering ─────────────────────────────────────────
 
 import { esc, addressOf, relPath } from './utils.js';
-import { KIND_COLORS, EDGE_COLORS, DIRECTION_COLORS, DIRECTION_NAMES, DIRECTION_ARROWS } from './constants.js';
+import { KIND_COLORS, EDGE_COLORS, DIRECTION_COLORS, DIRECTION_NAMES, DIRECTION_ARROWS, LABEL_COLORS } from './constants.js';
 import { S } from './state.js';
 
 // Focus callback — set by main.js to break circular dep with focus.js
@@ -150,7 +150,10 @@ export function showDetails(data) {
             memberNodes.forEach(function (mn) {
                 var mnKind = mn.data('kind') || (mn.data('_isFolder') ? 'folder' : (mn.data('_isFileContainer') ? 'file' : '?'));
                 var mnLabel = mn.data('label') || mn.data('_filePath') || '';
-                var mnColor = mn.data('_isFolder') ? '#737aa2' : (mn.data('_isFileContainer') ? '#565f89' : (KIND_COLORS[mn.data('kind')] || '#565f89'));
+                // Folder/file members are chips in the same colours the boxes
+                // carry (LABEL_COLORS); a symbol keeps its kind colour. The
+                // last fallback is a *kind* we do not know, not a label role.
+                var mnColor = mn.data('_isFolder') ? LABEL_COLORS.folder : (mn.data('_isFileContainer') ? LABEL_COLORS.file : (KIND_COLORS[mn.data('kind')] || '#565f89'));
                 var hint = mn.data('_collapsible') ? (mn.data('_collapsed') ? ' [+' : ' [\u2212') : '';
                 html += '<div class="clickable-edge" data-id="' + esc(mn.id()) + '" title="Click to focus">';
                 html += '<span class="edge-kind" style="color:' + mnColor + '">' + esc(mnKind) + '</span>';

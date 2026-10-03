@@ -1,0 +1,419 @@
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:164:
+     let decorators: Vec<String> = parent
+         .named_children(&mut cur)
+         .filter(|c| c.kind() == "decorator")
+[31m-        .map(|c| {
+[0m[31m-            txt(&c, src)
+[0m[31m-                .trim_start_matches('@')
+[0m[31m-                .trim()
+[0m[31m-                .to_string()
+[0m[31m-        })
+[0m[32m+        .map(|c| txt(&c, src).trim_start_matches('@').trim().to_string())
+[0m         .collect();
+     if decorators.is_empty() {
+         return Vec::new();
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:220:
+ fn docstring_body(string: Node, src: &[u8]) -> String {
+     let raw = txt(&string, src).trim_start_matches(|c: char| c.is_ascii_alphabetic());
+     for quote in ["\"\"\"", "'''", "\"", "'"] {
+[31m-        if let Some(body) = raw
+[0m[31m-            .strip_prefix(quote)
+[0m[31m-            .and_then(|b| b.strip_suffix(quote))
+[0m[31m-        {
+[0m[32m+        if let Some(body) = raw.strip_prefix(quote).and_then(|b| b.strip_suffix(quote)) {
+[0m             return body.to_string();
+         }
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:303:
+     (left.kind() == "identifier").then(|| txt(&left, src).to_string())
+ }
+ 
+[31m-
+[0m // --- call sites, data flow, imports ---------------------------------------
+ 
+ /// Every call names its callee in the `function` field.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:410:
+     }
+ }
+ 
+[31m-
+[0m /// `import os.path as osp, sys` / `from collections import OrderedDict as OD`
+ /// / `from ..pkg import (a, b as c)` / `from . import sibling` /
+ /// `from pkg.mod import *` → resolver records. One record per imported name:
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:501:
+     found
+ }
+ 
+[31m-
+[0m #[cfg(test)]
+ mod tests {
+     use super::*;
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:593:
+     /// `(ancestor, ordinal)` for an anchored key, if it is one.
+     fn anchored_parts(k: &NodeKey) -> Option<(&NodeKey, u32)> {
+         match k {
+[31m-            NodeKey::Anchored { ancestor, ordinal, .. } => Some((ancestor, *ordinal)),
+[0m[32m+            NodeKey::Anchored {
+[0m[32m+                ancestor, ordinal, ..
+[0m[32m+            } => Some((ancestor, *ordinal)),
+[0m             _ => None,
+         }
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:665:
+ 
+         // Visibility is name-based (D2); `__init__` is a plain public Method.
+         assert_eq!(node(&g, "Shape.__init__").kind, NodeKind::Method);
+[31m-        assert_eq!(node(&g, "Shape.__init__").attrs.visibility, Visibility::Public);
+[0m[31m-        assert_eq!(node(&g, "Shape._compute").attrs.visibility, Visibility::Module);
+[0m[31m-        assert_eq!(node(&g, "Shape._hidden").attrs.visibility, Visibility::Module);
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Shape.__init__").attrs.visibility,
+[0m[32m+            Visibility::Public
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Shape._compute").attrs.visibility,
+[0m[32m+            Visibility::Module
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            node(&g, "Shape._hidden").attrs.visibility,
+[0m[32m+            Visibility::Module
+[0m[32m+        );
+[0m         assert_eq!(node(&g, "Shape.sides").attrs.visibility, Visibility::Public);
+         assert_eq!(node(&g, "__secret").attrs.visibility, Visibility::Private);
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:687:
+ 
+         // Imports: one record per imported name, relative dots kept as segments.
+         assert_eq!(g.imports.len(), 4, "{:?}", g.imports);
+[31m-        assert!(g.imports.iter().any(|r| r.path == ["os", "path"] && r.alias.is_none()));
+[0m[31m-        assert!(g.imports
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m             .iter()
+[32m+            .any(|r| r.path == ["os", "path"] && r.alias.is_none()));
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m[32m+            .iter()
+[0m             .any(|r| r.path == ["collections", "OrderedDict"] && r.alias.as_deref() == Some("OD")));
+[31m-        assert!(g.imports.iter().any(|r| r.path == [".", "sibling"] && r.alias.is_none()));
+[0m[31m-        assert!(g.imports
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m             .iter()
+[32m+            .any(|r| r.path == [".", "sibling"] && r.alias.is_none()));
+[0m[32m+        assert!(g
+[0m[32m+            .imports
+[0m[32m+            .iter()
+[0m             .any(|r| r.path == ["..", "pkg", "helper"] && r.alias.as_deref() == Some("h2")));
+ 
+         // Namespace edges: the class Defines its methods, and only them.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:700:
+         let shape = def_key(&g, "Shape");
+[31m-        for m in ["Shape.__init__", "Shape.area", "Shape.label", "Shape._compute"] {
+[0m[32m+        for m in [
+[0m[32m+            "Shape.__init__",
+[0m[32m+            "Shape.area",
+[0m[32m+            "Shape.label",
+[0m[32m+            "Shape._compute",
+[0m[32m+        ] {
+[0m             let member = def_key(&g, m);
+             assert!(
+                 g.edges.keys().any(|k| k.kind == EdgeKind::Defines
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:710:
+         for f in ["Shape.sides", "Shape._hidden"] {
+             let field = def_key(&g, f);
+             assert!(
+[31m-                !g.edges.keys().any(|k| k.kind == EdgeKind::Defines && k.target == field),
+[0m[32m+                !g.edges
+[0m[32m+                    .keys()
+[0m[32m+                    .any(|k| k.kind == EdgeKind::Defines && k.target == field),
+[0m                 "attributes are Contains-only, like Rust's struct fields"
+             );
+             assert!(
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:722:
+         }
+     }
+ 
+[31m-
+[0m     #[test]
+     fn resolves_same_file_calls_and_records_the_rest() {
+         let g = extract(FIXTURE);
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:729:
+[31m-        let calls: Vec<_> = g.edges.iter().filter(|(k, _)| k.kind == EdgeKind::Calls).collect();
+[0m[32m+        let calls: Vec<_> = g
+[0m[32m+            .edges
+[0m[32m+            .iter()
+[0m[32m+            .filter(|(k, _)| k.kind == EdgeKind::Calls)
+[0m[32m+            .collect();
+[0m         assert_eq!(calls.len(), 4, "{calls:#?}");
+ 
+         // self.method() inside the class body resolves without types.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:737:
+             ast_kind: "call".into(),
+             ordinal: 0,
+         };
+[31m-        assert!(calls.iter().any(|(k, _)| k.source == self_site && k.target == compute));
+[0m[31m-        assert_eq!(site(&g, "_compute", "self_method").unwrap().label, "_compute");
+[0m[32m+        assert!(calls
+[0m[32m+            .iter()
+[0m[32m+            .any(|(k, _)| k.source == self_site && k.target == compute));
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "_compute", "self_method").unwrap().label,
+[0m[32m+            "_compute"
+[0m[32m+        );
+[0m 
+         // A later definition resolves: `local_fn()` is called before it is read.
+         let local = def_key(&g, "local_fn");
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:747:
+             ast_kind: "call".into(),
+             ordinal: 1,
+         };
+[31m-        assert!(calls.iter().any(|(k, _)| k.source == later_site && k.target == local));
+[0m[32m+        assert!(calls
+[0m[32m+            .iter()
+[0m[32m+            .any(|(k, _)| k.source == later_site && k.target == local));
+[0m 
+         // A class is a definition: `Shape("sq")` is a same-file call.
+         let shape = def_key(&g, "Shape");
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:754:
+         assert!(calls.iter().any(|(k, _)| k.target == shape));
+ 
+         // Unresolved, but recorded with the receiver as a hint for cg-resolve.
+[31m-        assert_eq!(site(&g, "area", "method_unresolved").unwrap().attrs.extra["hint"], "shape");
+[0m[31m-        assert_eq!(site(&g, "join", "method_unresolved").unwrap().attrs.extra["hint"], "os.path");
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "area", "method_unresolved").unwrap().attrs.extra["hint"],
+[0m[32m+            "shape"
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "join", "method_unresolved").unwrap().attrs.extra["hint"],
+[0m[32m+            "os.path"
+[0m[32m+        );
+[0m         // Imported names carry the import path instead. The path is the record's
+         // segments joined with `qual_sep`, so a relative import's dot run reads
+         // as a doubled dot (`from . import x` → `..x`) — the segments in
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:762:
+         // `g.imports` above are what the resolver consumes.
+[31m-        assert_eq!(site(&g, "h2", "imported").unwrap().attrs.extra["hint"], "...pkg.helper");
+[0m[31m-        assert_eq!(site(&g, "sibling", "imported").unwrap().attrs.extra["hint"], "..sibling");
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "h2", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "...pkg.helper"
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "sibling", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "..sibling"
+[0m[32m+        );
+[0m         // One site per call, decorators included (they are metadata, not calls).
+         assert_eq!(sites(&g).len(), 8);
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:827:
+ 
+         // Hints: the bare `a` imported from `pkg` resolves to `pkg.a`; the glob
+         // leaves `a` unresolved rather than guessing.
+[31m-        assert_eq!(site(&g, "a", "imported").unwrap().attrs.extra["hint"], "pkg.a");
+[0m[31m-        assert_eq!(site(&g, "h2", "imported").unwrap().attrs.extra["hint"], "...pkg.helper");
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "a", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "pkg.a"
+[0m[32m+        );
+[0m[32m+        assert_eq!(
+[0m[32m+            site(&g, "h2", "imported").unwrap().attrs.extra["hint"],
+[0m[32m+            "...pkg.helper"
+[0m[32m+        );
+[0m     }
+ 
+[31m-
+[0m     #[test]
+     fn tracks_data_flow_across_bindings() {
+         let src = r#"
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:874:
+         let flows: Vec<Option<&str>> = trace.iter().map(|(_, f)| f.as_deref()).collect();
+         assert_eq!(
+             flows,
+[31m-            vec![None, Some("0->0"), None, Some("0->2,1->2"), None, Some("0->4,1->4"), None],
+[0m[32m+            vec![
+[0m[32m+                None,
+[0m[32m+                Some("0->0"),
+[0m[32m+                None,
+[0m[32m+                Some("0->2,1->2"),
+[0m[32m+                None,
+[0m[32m+                Some("0->4,1->4"),
+[0m[32m+                None
+[0m[32m+            ],
+[0m             "{trace:#?}"
+         );
+     }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:882:
+     #[test]
+     fn keys_are_stable_under_body_edits() {
+         let before = extract(FIXTURE);
+[31m-        let edited = FIXTURE.replace("def local_fn() -> int:\n    return 2", "def local_fn() -> int:\n    # noop\n    return 2");
+[0m[32m+        let edited = FIXTURE.replace(
+[0m[32m+            "def local_fn() -> int:\n    return 2",
+[0m[32m+            "def local_fn() -> int:\n    # noop\n    return 2",
+[0m[32m+        );
+[0m         let after = extract(&edited);
+         let ops = diff(&before, &after);
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:889:
+         // Identity survives; only specs (spans) change.
+         assert!(!ops.is_empty());
+         assert!(
+[31m-            ops.iter().all(|op| !matches!(
+[0m[31m-                op,
+[0m[31m-                KeyOp::RemoveNode { .. } | KeyOp::RemoveEdge { .. }
+[0m[31m-            )),
+[0m[32m+            ops.iter()
+[0m[32m+                .all(|op| !matches!(op, KeyOp::RemoveNode { .. } | KeyOp::RemoveEdge { .. })),
+[0m             "no identity churn expected: {ops:#?}"
+         );
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:903:
+                 .map(|(k, _)| k.clone())
+                 .collect::<std::collections::BTreeSet<_>>()
+         };
+[31m-        assert_eq!(callsites(&before), callsites(&after), "anchored keys renumbered");
+[0m[32m+        assert_eq!(
+[0m[32m+            callsites(&before),
+[0m[32m+            callsites(&after),
+[0m[32m+            "anchored keys renumbered"
+[0m[32m+        );
+[0m     }
+ 
+     /// Indentation grammars swallow broken code into `ERROR` nodes; the walker
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:917:
+         // The good definition after the garbage still lands, signature and all.
+         let good = node(&g, "still_ok");
+         assert_eq!(good.kind, NodeKind::Function);
+[31m-        assert_eq!(good.attrs.signature.as_deref(), Some("def still_ok() -> int"));
+[0m[32m+        assert_eq!(
+[0m[32m+            good.attrs.signature.as_deref(),
+[0m[32m+            Some("def still_ok() -> int")
+[0m[32m+        );
+[0m 
+         // `pass` and `return 1` are expressions, not calls, and no node is named
+         // after raw source: recovery never fabricates a definition from garbage.
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:936:
+     /// producing confident nonsense.
+     #[test]
+     fn python_and_rust_profiles_do_not_interchange() {
+[31m-        assert_eq!(crate::for_extension("py").map(|p| p.lang), Some(Lang::Python));
+[0m[32m+        assert_eq!(
+[0m[32m+            crate::for_extension("py").map(|p| p.lang),
+[0m[32m+            Some(Lang::Python)
+[0m[32m+        );
+[0m         assert_eq!(crate::for_extension("rs").map(|p| p.lang), Some(Lang::Rust));
+ 
+         let py = SourceFile {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1020:
+             g.file.display()
+         );
+         while let Some(k) = frontier.pop() {
+[31m-            for key in g.edges.keys().filter(|key| hierarchy(key) && &key.source == k) {
+[0m[32m+            for key in g
+[0m[32m+                .edges
+[0m[32m+                .keys()
+[0m[32m+                .filter(|key| hierarchy(key) && &key.source == k)
+[0m[32m+            {
+[0m                 if reached.insert(&key.target) {
+                     frontier.push(&key.target);
+                 }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1062:
+     fn one_directory_two_languages_flattens_without_collisions() {
+         let manifest = fixture_manifest();
+         let langs: Vec<Lang> = manifest.iter().map(|(_, p)| p.lang).collect();
+[31m-        assert!(langs.contains(&Lang::Python), "no Python fixture: {langs:?}");
+[0m[32m+        assert!(
+[0m[32m+            langs.contains(&Lang::Python),
+[0m[32m+            "no Python fixture: {langs:?}"
+[0m[32m+        );
+[0m         assert!(langs.contains(&Lang::Rust), "no Rust fixture: {langs:?}");
+ 
+         let root = fixture_root();
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1080:
+                 lang: profile.lang,
+                 text,
+             };
+[31m-            let graph = ProfileExtractor(profile).extract(&file).expect("extract fixture");
+[0m[32m+            let graph = ProfileExtractor(profile)
+[0m[32m+                .extract(&file)
+[0m[32m+                .expect("extract fixture");
+[0m             let defs = graph.nodes.values().filter(|n| n.is_definition).count();
+             assert!(defs >= 2, "{} extracted almost nothing", rel.display());
+             let orphans = orphans(&graph);
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1087:
+[31m-            assert!(orphans.is_empty(), "{} has orphans: {orphans:?}", rel.display());
+[0m[31m-            assert!(same_file_call(&graph), "{} resolved no same-file call", rel.display());
+[0m[32m+            assert!(
+[0m[32m+                orphans.is_empty(),
+[0m[32m+                "{} has orphans: {orphans:?}",
+[0m[32m+                rel.display()
+[0m[32m+            );
+[0m[32m+            assert!(
+[0m[32m+                same_file_call(&graph),
+[0m[32m+                "{} resolved no same-file call",
+[0m[32m+                rel.display()
+[0m[32m+            );
+[0m             expected.insert(rel, profile.lang);
+             graphs.push(graph);
+         }
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1094:
+             .iter()
+             .map(|g| g.nodes.values().filter(|n| n.is_definition).count())
+             .sum();
+[31m-        assert_eq!(snapshot.nodes.len(), defs, "flatten deduplicated distinct keys");
+[0m[32m+        assert_eq!(
+[0m[32m+            snapshot.nodes.len(),
+[0m[32m+            defs,
+[0m[32m+            "flatten deduplicated distinct keys"
+[0m[32m+        );
+[0m         assert_eq!(snapshot.file_count, graphs.len());
+ 
+         let mut seen: BTreeMap<String, Lang> = BTreeMap::new();
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1120:
+                 other => panic!("fixture tree grew a {other:?} file"),
+             }
+             if let Some(previous) = seen.insert(qualified_name.clone(), *lang) {
+[31m-                assert_eq!(previous, *lang, "key {qualified_name} is shared across languages");
+[0m[32m+                assert_eq!(
+[0m[32m+                    previous, *lang,
+[0m[32m+                    "key {qualified_name} is shared across languages"
+[0m[32m+                );
+[0m             }
+         }
+ 
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1134:
+         let mixed: Vec<&GraphNode> = snapshot
+             .nodes
+             .iter()
+[31m-            .filter(|n| matches!(&n.key, NodeKey::Symbol { lang: Lang::Rust, .. }))
+[0m[32m+            .filter(|n| {
+[0m[32m+                matches!(
+[0m[32m+                    &n.key,
+[0m[32m+                    NodeKey::Symbol {
+[0m[32m+                        lang: Lang::Rust,
+[0m[32m+                        ..
+[0m[32m+                    }
+[0m[32m+                )
+[0m[32m+            })
+[0m             .collect();
+         assert_eq!(mixed.len(), rust_only.nodes.len());
+         for node in &rust_only.nodes {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1141:
+[31m-            let same = mixed
+[0m[31m-                .iter()
+[0m[31m-                .find(|n| n.key == node.key)
+[0m[31m-                .unwrap_or_else(|| panic!("Rust node missing from the mixed snapshot: {:?}", node.key));
+[0m[32m+            let same = mixed.iter().find(|n| n.key == node.key).unwrap_or_else(|| {
+[0m[32m+                panic!("Rust node missing from the mixed snapshot: {:?}", node.key)
+[0m[32m+            });
+[0m             assert_eq!(*same, node, "Python perturbed a Rust node");
+         }
+         for edge in &rust_only.edges {
+Diff in \\?\D:\proyects\graphcodetree\crates\extract\src\python.rs:1152:
+         }
+     }
+ }
+[31m-
+[0m 

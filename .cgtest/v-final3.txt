@@ -1,0 +1,45 @@
+# cytoscape 3.34.3
+# snapshot: 393 nodes / 2252 edges
+# nodeSize=40 filePad=15 folderPad=20 gaps=24/28/36/64 aspect=1.7 label=10px
+
+## sizing probe
+   symbol box 44 x 44   (expect 44)
+   file   box 77.5 x 77.5
+   folder box 253.5 x 253.5
+
+## detail = full (folder -> file -> symbol)
+   stats {"engine":"hierarchy","symbols":391,"boxes":35,"levels":5,"cell":68,"w":3031,"h":1913}
+   boxes checked 35  sibling pairs 5652  levels 6
+
+## presets side by side
+   tree (compact)  extent 2768 x 1738u   nodeGap 16/20  rowGap 48
+   tree (roomy)    extent 3740 x 2474u   nodeGap 44/52  rowGap 120
+
+## detail = files
+   stats {"engine":"hierarchy","symbols":391,"boxes":21,"levels":1,"cell":60,"w":2432,"h":1156}
+   extent 2433 x 1157u
+
+## detail = flat
+   stats {"engine":"hierarchy","symbols":391,"boxes":0,"levels":0,"cell":60,"w":2192,"h":1024}
+   extent 2192 x 1024u
+
+## fit-to-view readability (1280x760 viewport; labels are DOM overlays at a fixed 10px)
+   detail = full   extent 3032 x 1914u   zoom 0.397   node 15.9px   label/node 0.63x
+   tree (compact)  extent 2768 x 1738u   zoom 0.437   node 17.5px   label/node 0.57x
+   tree (roomy)    extent 3740 x 2474u   zoom 0.307   node 12.3px   label/node 0.81x
+
+## largest boxes in the tree
+     3032 x  1914u   folder root
+     2988 x  1870u   folder crates
+     2001 x  1024u   folder ir
+     1957 x   980u   folder src
+     1231 x   739u   folder extract
+     1187 x   695u   folder src
+
+## presets
+
+ALL CHECKS PASSED   (44 assertions)
+worst sibling gap 16.00u   min symbol gap 16.00u   worst box-inset error 0.25u (vs pad+border)   worst centring error 0.00u   levels 6
+observed inset per box style (tight = nearest child to the edge, loose = furthest):
+   pad 20 + border 2  ->  tight 22u, loose 22u  over 42 boxes
+   pad 15 + border 1.5  ->  tight 16.75u, loose 16.75u  over 84 boxes

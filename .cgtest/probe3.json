@@ -1,0 +1,632 @@
+{
+  "nodes": [
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "Greeter",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "kind": "struct",
+      "label": "Greeter",
+      "ast_kind": "struct_item",
+      "span": {
+        "file": ".cgtest\\probe3\\a.rs",
+        "start_byte": 76,
+        "end_byte": 91,
+        "start": {
+          "row": 5,
+          "col": 0
+        },
+        "end": {
+          "row": 5,
+          "col": 15
+        }
+      },
+      "attrs": {
+        "signature": "struct Greeter;",
+        "visibility": "private",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": ".cgtest\\probe3\\a.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "Greeter::hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "hi",
+      "ast_kind": "function_item",
+      "span": {
+        "file": ".cgtest\\probe3\\a.rs",
+        "start_byte": 115,
+        "end_byte": 169,
+        "start": {
+          "row": 8,
+          "col": 4
+        },
+        "end": {
+          "row": 10,
+          "col": 5
+        }
+      },
+      "attrs": {
+        "signature": "fn hi(&self) -> String",
+        "visibility": "private",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": ".cgtest\\probe3\\a.rs",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "impl Greeter",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "kind": "impl_block",
+      "label": "impl Greeter",
+      "ast_kind": "impl_item",
+      "span": {
+        "file": ".cgtest\\probe3\\a.rs",
+        "start_byte": 95,
+        "end_byte": 172,
+        "start": {
+          "row": 7,
+          "col": 0
+        },
+        "end": {
+          "row": 11,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "impl Greeter",
+        "visibility": "private",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": ".cgtest\\probe3\\a.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "main",
+      "ast_kind": "function_item",
+      "span": {
+        "file": ".cgtest\\probe3\\a.rs",
+        "start_byte": 0,
+        "end_byte": 72,
+        "start": {
+          "row": 0,
+          "col": 0
+        },
+        "end": {
+          "row": 3,
+          "col": 1
+        }
+      },
+      "attrs": {
+        "signature": "fn main()",
+        "visibility": "private",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": ".cgtest\\probe3\\a.rs",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "kind": "class",
+      "label": "Greeter",
+      "ast_kind": "class_definition",
+      "span": {
+        "file": ".cgtest\\probe3\\b.py",
+        "start_byte": 0,
+        "end_byte": 52,
+        "start": {
+          "row": 0,
+          "col": 0
+        },
+        "end": {
+          "row": 2,
+          "col": 17
+        }
+      },
+      "attrs": {
+        "signature": "class Greeter",
+        "visibility": "public",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": ".cgtest\\probe3\\b.py",
+      "depth": 0
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter.hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "kind": "method",
+      "label": "hi",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": ".cgtest\\probe3\\b.py",
+        "start_byte": 20,
+        "end_byte": 52,
+        "start": {
+          "row": 1,
+          "col": 4
+        },
+        "end": {
+          "row": 2,
+          "col": 17
+        }
+      },
+      "attrs": {
+        "signature": "def hi(self)",
+        "visibility": "public",
+        "extra": {
+          "depth": 1
+        }
+      },
+      "file": ".cgtest\\probe3\\b.py",
+      "depth": 1
+    },
+    {
+      "key": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "kind": "function",
+      "label": "main",
+      "ast_kind": "function_definition",
+      "span": {
+        "file": ".cgtest\\probe3\\b.py",
+        "start_byte": 58,
+        "end_byte": 107,
+        "start": {
+          "row": 5,
+          "col": 0
+        },
+        "end": {
+          "row": 7,
+          "col": 17
+        }
+      },
+      "attrs": {
+        "signature": "def main()",
+        "visibility": "public",
+        "extra": {
+          "depth": 0
+        }
+      },
+      "file": ".cgtest\\probe3\\b.py",
+      "depth": 0
+    }
+  ],
+  "edges": [
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "Greeter",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "impl Greeter",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "Greeter::hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": ".cgtest\\probe3\\a.rs",
+          "qualified_name": "Greeter::hi",
+          "kind": "method",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "impl Greeter",
+        "kind": "impl_block",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "Greeter::hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": ".cgtest\\probe3\\a.rs",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call_expression",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "rust",
+          "file": ".cgtest\\probe3\\a.rs",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "macro_invocation",
+        "ordinal": 1
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "Greeter",
+        "kind": "struct",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "rust",
+        "file": ".cgtest\\probe3\\a.rs",
+        "qualified_name": "Greeter::hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "",
+        "kind": "file",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter.hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\probe3\\b.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\probe3\\b.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 1
+      },
+      "weight": 1
+    },
+    {
+      "kind": "contains",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "main",
+        "kind": "function",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\probe3\\b.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 2
+      },
+      "weight": 1
+    },
+    {
+      "kind": "defines",
+      "source": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter.hi",
+        "kind": "method",
+        "disambiguator": 0
+      },
+      "weight": 1
+    },
+    {
+      "kind": "calls",
+      "source": {
+        "key": "anchored",
+        "ancestor": {
+          "key": "symbol",
+          "lang": "python",
+          "file": ".cgtest\\probe3\\b.py",
+          "qualified_name": "main",
+          "kind": "function",
+          "disambiguator": 0
+        },
+        "ast_kind": "call",
+        "ordinal": 0
+      },
+      "target": {
+        "key": "symbol",
+        "lang": "python",
+        "file": ".cgtest\\probe3\\b.py",
+        "qualified_name": "Greeter",
+        "kind": "class",
+        "disambiguator": 0
+      },
+      "span": {
+        "file": ".cgtest\\probe3\\b.py",
+        "start_byte": 79,
+        "end_byte": 88,
+        "start": {
+          "row": 6,
+          "col": 8
+        },
+        "end": {
+          "row": 6,
+          "col": 17
+        }
+      },
+      "weight": 1
+    }
+  ],
+  "file_count": 2,
+  "stats": {
+    "total_nodes": 7,
+    "total_edges": 16,
+    "function_count": 4,
+    "struct_count": 1,
+    "trait_count": 0,
+    "impl_count": 1,
+    "calls_edge_count": 1,
+    "contains_edge_count": 13,
+    "impl_edge_count": 0,
+    "data_flow_edge_count": 0
+  }
+}

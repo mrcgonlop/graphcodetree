@@ -1,0 +1,4 @@
+file_count     : 23 vs 28 | equal: false
+stats          : equal: true
+nodes ordered  : equal: false | sorted equal: true | 483 vs 483
+edges ordered  : equal: false | sorted equal: true | 2381 vs 2381

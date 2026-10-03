@@ -3,6 +3,7 @@
 // All label spans are in a single overlay div for performance.
 
 import { S } from './state.js';
+import { LABEL_COLORS, LABEL_HALO } from './constants.js';
 import { addressOf, esc } from './utils.js';
 import { toggleContainer } from './visibility.js';
 
@@ -38,7 +39,10 @@ function labelHtml(n, lbl) {
     if (!S.showLineNumbers || d._isContainer) return name;
     const line = d.line;
     if (line === null || line === undefined) return name;
-    return name + '<span class="ln">:' + line + '</span>';
+    // The number takes its colour from the palette (inline) rather than the
+    // `#label-overlay .ln` rule, so every piece of label text has exactly one
+    // source: LABEL_COLORS in constants.js.
+    return name + '<span class="ln" style="color:' + LABEL_COLORS.line + '">:' + line + '</span>';
 }
 
 /// What hovering a label says. All of it is already in the snapshot (the
@@ -129,17 +133,17 @@ export function createLabelOverlays() {
                     fontSize = n.data('_isFolder')
                         ? Math.max(S.currentFontSize + 2, 12)
                         : Math.max(S.currentFontSize, 11);
-                    color = n.data('_isFolder') ? '#737aa2' : '#565f89';
+                    color = n.data('_isFolder') ? LABEL_COLORS.folder : LABEL_COLORS.file;
                 } else {
                     topOffset = pos.y + 6;
                     fontSize = S.currentFontSize;
-                    color = '#a9b1d6';
+                    color = LABEL_COLORS.symbol;
                 }
                 var baseSize = typeof fontSize === 'number' ? fontSize : parseInt(fontSize);
                 span.style.cssText =
                     'position:absolute;left:' + pos.x + 'px;top:' + topOffset + 'px;' +
                     'transform:translate(-50%,0);font-size:' + baseSize + 'px;' +
-                    'color:' + color + ';text-shadow:0 0 3px #0f0f1a,0 0 6px #0f0f1a;' +
+                    'color:' + color + ';text-shadow:0 0 3px ' + LABEL_HALO + ',0 0 6px ' + LABEL_HALO + ';' +
                     'white-space:nowrap;user-select:text;' +
                     'opacity:' + spanOpacity(n) + ';' +
                     'transition:opacity 0.15s';
@@ -192,7 +196,7 @@ export function createLabelOverlays() {
                         ? Math.max(S.currentFontSize + 2, 12)
                         : Math.max(S.currentFontSize, 11);
                     span.style.fontSize = fs + 'px';
-                    span.style.color = n.data('_isFolder') ? '#737aa2' : '#565f89';
+                    span.style.color = n.data('_isFolder') ? LABEL_COLORS.folder : LABEL_COLORS.file;
                     span.style.pointerEvents = 'auto';
                     span.style.cursor = 'pointer';
                     span.title = tooltipOf(n);
@@ -200,7 +204,7 @@ export function createLabelOverlays() {
                     span.style.left = pos.x + 'px';
                     span.style.top = (pos.y + 6) + 'px';
                     span.style.fontSize = S.currentFontSize + 'px';
-                    span.style.color = '#a9b1d6';
+                    span.style.color = LABEL_COLORS.symbol;
                     span.style.pointerEvents = 'none';
                     span.style.cursor = 'default';
                 }

@@ -1,0 +1,2 @@
+   Compiling cg-cli v0.1.0 (D:\proyects\graphcodetree\crates\cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.94s

@@ -1,0 +1,134 @@
+    Checking cg-ir v0.1.0 (D:\proyects\graphcodetree\crates\ir)
+    Checking cg-store v0.1.0 (D:\proyects\graphcodetree\crates\store)
+    Checking cg-extract v0.1.0 (D:\proyects\graphcodetree\crates\extract)
+warning: redundant field names in struct initialization
+   --> crates\store\src\lib.rs:124:23
+    |
+124 |         Ok(GraphDelta{base_version:base_version,version:self.version,ops:out})
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^ help: replace it with: `base_version`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#redundant_field_names
+    = note: `#[warn(clippy::redundant_field_names)]` on by default
+
+warning: you should consider adding a `Default` implementation for `Interner`
+  --> crates\store\src\intern.rs:29:5
+   |
+29 | /     pub fn new() -> Self {
+30 | |         Self {
+31 | |             node_by_key: HashMap::new(),
+32 | |             node_by_id: Vec::new(),
+...  |
+38 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#new_without_default
+   = note: `#[warn(clippy::new_without_default)]` on by default
+help: try adding this
+   |
+28 + impl Default for Interner {
+29 +     fn default() -> Self {
+30 +         Self::new()
+31 +     }
+32 + }
+   |
+
+warning: you should consider adding a `Default` implementation for `GraphStore`
+  --> crates\store\src\lib.rs:48:5
+   |
+48 | /     pub fn new() -> Self {
+49 | |         Self {
+50 | |             version: 0, nodes: HashMap::new(), edges: HashMap::new(),
+51 | |             interner: Interner::new(), imports: HashMap::new(),
+...  |
+55 | |     }
+   | |_____^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#new_without_default
+help: try adding this
+   |
+47 + impl Default for GraphStore {
+48 +     fn default() -> Self {
+49 +         Self::new()
+50 +     }
+51 + }
+   |
+
+warning: this `map_or` can be simplified
+   --> crates\store\src\lib.rs:260:20
+    |
+260 |             let ir=view.root.map_or(true,|r|n.id==r||self.is_descendant_of(n.id,r));
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#unnecessary_map_or
+    = note: `#[warn(clippy::unnecessary_map_or)]` on by default
+help: use `is_none_or` instead
+    |
+260 -             let ir=view.root.map_or(true,|r|n.id==r||self.is_descendant_of(n.id,r));
+260 +             let ir=view.root.is_none_or(|r|n.id==r||self.is_descendant_of(n.id,r));
+    |
+
+warning: `cg-store` (lib) generated 4 warnings (run `cargo clippy --fix --lib -p cg-store -- ` to apply 4 suggestions)
+    Checking cg-enrich v0.1.0 (D:\proyects\graphcodetree\crates\enrich)
+warning: `cg-store` (lib test) generated 4 warnings (4 duplicates)
+warning: this expression creates a reference which is immediately dereferenced by the compiler
+  --> crates\enrich\src\impl_trait.rs:38:67
+   |
+38 |             if let Some((trait_name, type_name)) = parse_impl_for(&sig) {
+   |                                                                   ^^^^ help: change this to: `sig`
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#needless_borrow
+   = note: `#[warn(clippy::needless_borrow)]` on by default
+
+warning: you seem to want to iterate on a map's values
+  --> crates\enrich\src\data_flow.rs:70:49
+   |
+70 |             for (_ord, (call_site, call_id)) in &calls_by_ord {
+   |                                                 ^^^^^^^^^^^^^
+   |
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#for_kv_map
+   = note: `#[warn(clippy::for_kv_map)]` on by default
+help: use the corresponding method
+   |
+70 -             for (_ord, (call_site, call_id)) in &calls_by_ord {
+70 +             for (call_site, call_id) in calls_by_ord.values() {
+   |
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:166:20
+    |
+166 |     pub owned_doc: Option<fn(Node, &[u8]) -> Option<String>>,
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+    = note: `#[warn(clippy::type_complexity)]` on by default
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:196:20
+    |
+196 |     pub impl_info: Option<fn(Node, &[u8]) -> Option<ImplInfo>>,
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:198:24
+    |
+198 |     pub mod_decl_name: Option<fn(Node, &[u8]) -> Option<String>>,
+    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+
+warning: very complex type used. Consider factoring parts into `type` definitions
+   --> crates\extract\src\profile.rs:201:20
+    |
+201 |     pub def_extra: Option<fn(Node, &[u8]) -> Vec<(String, serde_json::Value)>>,
+    |                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.96.0/index.html#type_complexity
+
+warning: `cg-enrich` (lib test) generated 2 warnings (run `cargo clippy --fix --lib -p cg-enrich --tests -- ` to apply 2 suggestions)
+warning: `cg-enrich` (lib) generated 2 warnings (2 duplicates)
+warning: `cg-extract` (lib) generated 4 warnings
+    Checking cg-cli v0.1.0 (D:\proyects\graphcodetree\crates\cli)
+warning: `cg-extract` (lib test) generated 4 warnings (4 duplicates)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1.89s

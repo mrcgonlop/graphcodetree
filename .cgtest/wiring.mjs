@@ -1123,6 +1123,60 @@ if (dp) {
     ok(panelHtml().indexOf('empty') >= 0, 'unfocus empties the panel again');
 }
 
+// ── 14. the text on the graph comes from one palette ────────────────
+// Label text used to be five literals spread over four files — overlay.js
+// painted one pair on build() and a brighter pair on every later sync, main.js
+// and controls.js carried their own, details.js a third — which is exactly the
+// kind of thing that quietly drifts. They now share LABEL_COLORS
+// (constants.js), and this pins that both label paths paint the *same* value,
+// whatever that value is: retuning the palette must never fail this, only
+// letting the paths disagree again should.
+const { LABEL_COLORS, LABEL_HALO } = await import('../web/refactor/app/constants.js');
+
+/// Drawn nodes of a selector that the overlay really has a span for.
+function labelledSpans(sel) {
+    return S.cy.nodes(sel).filter(function (n) {
+        return n.style('display') !== 'none' && !!overlayOf(n.id());
+    });
+}
+
+S.nativeLabels = false;
+S.showLineNumbers = true;
+S.labelOverlay.render();
+await settle();
+
+const palFolder = labelledSpans('[_isFolder]')[0];
+const palFile = labelledSpans('[_isFileContainer]')[0];
+const palSymbol = labelledSpans('[_isSymbol]')[0];
+ok(!!palFolder && !!palFile && !!palSymbol, 'the scene has a drawn folder, file and symbol to label',
+    [palFolder, palFile, palSymbol].map(function (n) { return !!n; }).join(','));
+
+if (palFolder && palFile && palSymbol) {
+    const fSpan = overlayOf(palFolder.id()), xSpan = overlayOf(palFile.id()), sSpan = overlayOf(palSymbol.id());
+    ok(fSpan.style.color === LABEL_COLORS.folder, 'a folder name is painted in LABEL_COLORS.folder', fSpan.style.color);
+    ok(xSpan.style.color === LABEL_COLORS.file, 'a file name is painted in LABEL_COLORS.file', xSpan.style.color);
+    ok(sSpan.style.color === LABEL_COLORS.symbol, 'a symbol name is painted in LABEL_COLORS.symbol', sSpan.style.color);
+    ok(String(sSpan.style['text-shadow']).indexOf(LABEL_HALO) >= 0,
+        '...over the halo that keeps it legible when an edge runs through it', sSpan.style['text-shadow']);
+    ok(String(sSpan.innerHTML).indexOf(LABEL_COLORS.line) >= 0,
+        'and the `:line` beside a name is LABEL_COLORS.line', sSpan.innerHTML);
+
+    // The other path: the *Native labels* checkbox hands the drawing to
+    // cytoscape, which must land on the same three colours.
+    const nativeBox = document.getElementById('native-labels');
+    nativeBox.checked = true;
+    nativeBox.fire('change');
+    ok(hexOf(palFolder.style('color')) === LABEL_COLORS.folder,
+        'native labels paint a folder in the same colour', palFolder.style('color'));
+    ok(hexOf(palFile.style('color')) === LABEL_COLORS.file,
+        '...and a file in the same colour', palFile.style('color'));
+    ok(hexOf(palSymbol.style('color')) === LABEL_COLORS.symbol,
+        '...and a symbol in the same colour', palSymbol.style('color'));
+    nativeBox.checked = false;
+    nativeBox.fire('change');
+}
+
+
 console.log('\n' + (failures === 0 ? 'ALL CHECKS PASSED' : failures + ' CHECK(S) FAILED') + '   (' + checks + ' assertions)');
 
 
