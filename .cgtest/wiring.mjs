@@ -423,17 +423,35 @@ const overlayEl = graphEl.children.filter(function (c) { return c.id === 'label-
 ok(!!overlayEl, 'the label overlay div is appended to #graph-container');
 const spans = overlayEl ? overlayEl.querySelectorAll('span') : [];
 const visibleNodes = S.cy.nodes().filter(function (n) { return n.style('display') !== 'none'; });
-// A symbol's label is its `label`; a box's is the basename of its `_filePath`.
-// The root box has neither (it is the whole graph), so it gets no span.
-const labelledIds = visibleNodes.filter(function (n) {
-    return n.data('_isContainer')
-        ? String(n.data('_filePath') || '').replace(/^.*[/\\]/, '') !== ''
-        : !!n.data('label');
-}).map(function (n) { return n.id(); });
+// A symbol's label is its `label`; a box's is the basename of its `_filePath`,
+// falling back to its `label` for the root box. That fallback matters: the root
+// box stands for the whole graph, so it has no path, and with DOM labels the
+// overlay is the only thing naming a box (main.js draws none) — without it the
+// outer box would show no name at all.
+const labelOf = function (n) {
+    if (!n.data('_isContainer')) return String(n.data('label') || '');
+    var base = String(n.data('_filePath') || '').replace(/^.*[/\\]/, '');
+    return base || String(n.data('label') || '');
+};
+const labelledIds = visibleNodes.filter(function (n) { return labelOf(n) !== ''; })
+    .map(function (n) { return n.id(); });
 ok(spans.length > 0, 'the overlay has a span per labelled node', spans.length);
 ok(spans.length === labelledIds.length,
-    '...exactly one per visible node that has a label (the unlabelled root box gets none)',
+    '...exactly one per visible node that has a label',
     spans.length + ' spans / ' + labelledIds.length + ' labelled nodes');
+
+// The root box is the one box with no path, and it is the one cytoscape used to
+// name instead — in a dim literal that was not on the palette. Pin that the
+// overlay picks it up, so DOM mode cannot quietly lose the outer box's title.
+const rootBox = S.cy.getElementById('folder:__root__');
+ok(rootBox.length > 0 && rootBox.style('display') !== 'none', 'the scene has a drawn root box to name',
+    rootBox.length + ' node(s), display ' + (rootBox.length ? rootBox.style('display') : '-'));
+if (rootBox.length > 0) {
+    const rootSpan = spans.filter(function (s) { return s.dataset.nodeId === rootBox.id(); })[0];
+    ok(!!rootSpan && String(rootSpan.innerHTML) === String(rootBox.data('label')),
+        '...and the overlay names it from its `label` (there is no path to take a basename from)',
+        rootSpan ? rootSpan.innerHTML : 'no span');
+}
 
 // Track a *symbol*: its label is placed from its own rendered position on both
 // the build path (cssText) and the sync path, so this exercises the exact
@@ -1175,6 +1193,51 @@ if (palFolder && palFile && palSymbol) {
     nativeBox.checked = false;
     nativeBox.fire('change');
 }
+
+
+// ── 15. a box is named exactly once ─────────────────────────────────
+// The DOM overlay paints every box name; main.js used to also leave
+// `label: data(label)` on the containers, so a box carried two names on top of
+// each other — the overlay's bright one and cytoscape's dimmer one (whose
+// folder colour was the literal `#737aa2`, not LABEL_COLORS.folder, which is
+// why retuning the palette never brightened the text you could actually see).
+// §14 only checks that the two paths agree on a colour; this pins that only
+// one of them draws at a time, and that native mode is the branch that takes
+// the box names back.
+function drawnBoxes(sel) {
+    return S.cy.nodes(sel).filter(function (n) { return n.style('display') !== 'none'; });
+}
+function nativeBoxLabel(sel) {
+    const b = drawnBoxes(sel).filter(function (n) { return !!n.data('label'); })[0];
+    return b ? String(b.style('label')) : null;
+}
+
+S.nativeLabels = false;
+S.labelOverlay.render();
+await settle();
+const doubleNames = drawnBoxes('[_isFileContainer], [_isFolder]').filter(function (b) {
+    return String(b.style('label')).length > 0;
+});
+ok(doubleNames.length === 0,
+    'with DOM labels the boxes draw no second, cytoscape-painted name',
+    doubleNames.length + ' box(es) still carry a native label');
+const anyFileBox = drawnBoxes('[_isFileContainer]')[0];
+ok(!!anyFileBox && !!overlayOf(anyFileBox.id()),
+    '...so the overlay is the only surface naming a box');
+
+const boxesNative = document.getElementById('native-labels');
+boxesNative.checked = true;
+boxesNative.fire('change');
+ok(nativeBoxLabel('[_isFileContainer]') !== null,
+    'native labels hand a file box its name back', String(nativeBoxLabel('[_isFileContainer]')));
+ok(nativeBoxLabel('[_isFolder]') !== null,
+    '...and a folder its name', String(nativeBoxLabel('[_isFolder]')));
+boxesNative.checked = false;
+boxesNative.fire('change');
+ok(drawnBoxes('[_isFileContainer], [_isFolder]').filter(function (b) {
+    return String(b.style('label')).length > 0;
+}).length === 0, '...and switching back drops it again');
+
 
 
 console.log('\n' + (failures === 0 ? 'ALL CHECKS PASSED' : failures + ' CHECK(S) FAILED') + '   (' + checks + ' assertions)');

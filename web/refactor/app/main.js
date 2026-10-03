@@ -48,7 +48,7 @@ function render(snapshot) {
                     'background-color': 'data(color)',
                     label: '',
                     'font-size': S.currentFontSize + 'px',
-                    color: '#a9b1d6',
+                    color: LABEL_COLORS.symbol,
                     'text-valign': 'bottom',
                     'text-halign': 'center',
                     'text-margin-y': 6,
@@ -80,9 +80,14 @@ function render(snapshot) {
                     'text-valign': 'top',
                     'text-halign': 'center',
                     'font-size': Math.max(S.currentFontSize, 11) + 'px',
-                    color: '#dde0f1',
+                    color: LABEL_COLORS.file,
                     'font-weight': 'bold',
-                    label: 'data(label)',
+                    // Box names belong to the DOM overlay in the default
+                    // (DOM labels) mode — `applyLabelMode()` in controls.js
+                    // hands them back to cytoscape only while *Native labels*
+                    // is on. Starting every container at `label: ''` is what
+                    // keeps a box from being named twice.
+                    label: '',
                     'z-compound-depth': 'bottom',
                     'z-index': -1,
                 },
@@ -101,9 +106,13 @@ function render(snapshot) {
                     'text-valign': 'top',
                     'text-halign': 'center',
                     'font-size': Math.max(S.currentFontSize + 2, 12) + 'px',
-                    color: '#737aa2',
+                    // Read from the palette like every other label colour:
+                    // this used to be the literal `#737aa2`, so retuning
+                    // LABEL_COLORS.folder changed the overlay span and left
+                    // this second (dimmer) copy of the name behind.
+                    color: LABEL_COLORS.folder,
                     'font-weight': 'bold',
-                    label: 'data(label)',
+                    label: '',
                     'z-compound-depth': 'bottom',
                     'z-index': -2,
                 },

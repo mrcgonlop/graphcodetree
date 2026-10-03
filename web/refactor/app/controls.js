@@ -134,6 +134,12 @@ export function initControls() {
     /// Line numbers are a *data* choice, not a drawing one: the native path
     /// picks `data(labelLine)` (built in builder.js), so toggling them never
     /// has to rebuild the scene.
+    ///
+    /// Boxes follow the same switch. The DOM overlay paints a box name from
+    /// `_filePath`; main.js starts each container at `label: ''` so cytoscape
+    /// does not paint a second, dimmer copy of it underneath. Native mode
+    /// (overlay hidden) is where cytoscape has to draw the box name itself,
+    /// so that is the only branch that hands `data(label)` back.
     function applyLabelMode() {
         S.cy.style()
             .selector('node[_isSymbol]')
@@ -143,6 +149,10 @@ export function initControls() {
             .style('text-valign', 'bottom')
             .style('text-halign', 'center')
             .style('text-margin-y', 4)
+            .selector('node[_isFileContainer]')
+            .style('label', S.nativeLabels ? 'data(label)' : '')
+            .selector('node[_isFolder]')
+            .style('label', S.nativeLabels ? 'data(label)' : '')
             .update();
         const ov = document.getElementById('label-overlay');
         if (ov) ov.style.display = S.nativeLabels ? 'none' : '';

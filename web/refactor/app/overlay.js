@@ -25,6 +25,20 @@ function spanOpacity(n) {
     return (isFinite(o) ? o : 1) * (isFinite(t) ? t : 1);
 }
 
+/// What text a label carries.
+///
+/// A symbol's own `label`. A box is named after the file (or folder) it stands
+/// for, taken from the basename of `_filePath` — except the root box, which
+/// stands for the whole graph: it has no path, so this falls back to the `label`
+/// the builder gave it (`'root'`). With DOM labels the overlay is the only
+/// surface naming a box (main.js starts every container at `label: ''`), so
+/// without the fallback the outer box would show no name at all.
+function nameOf(n) {
+    if (!n.data('_isContainer')) return n.data('label');
+    const base = String(n.data('_filePath') || '').replace(/^.*[/\\]/, '');
+    return base || n.data('label') || '';
+}
+
 /// What a label *says*: the name, plus the line the definition starts on when
 /// the line-number toggle is on. The name and the number are separate spans so
 /// the number can be smaller and dimmer than the name, which is what makes a
@@ -115,9 +129,7 @@ export function createLabelOverlays() {
                 if (!pos || typeof pos.x !== 'number' || !isFinite(pos.x) || !isFinite(pos.y)) return;
 
                 var isContainer = n.data('_isContainer');
-                var lbl = isContainer
-                    ? (n.data('_filePath') || '').replace(/^.*[/\\\\]/, '')
-                    : n.data('label');
+                var lbl = nameOf(n);
                 if (!lbl) return;
 
                 var span = document.createElement('span');
@@ -180,9 +192,7 @@ export function createLabelOverlays() {
                 if (!pos || !isFinite(pos.x) || !isFinite(pos.y)) { span.style.display = 'none'; return; }
 
                 var isContainer = n.data('_isContainer');
-                var lbl = isContainer
-                    ? (n.data('_filePath') || '').replace(/^.*[/\\\\]/, '')
-                    : n.data('label');
+                var lbl = nameOf(n);
                 span.innerHTML = labelHtml(n, lbl);
                 span.title = tooltipOf(n);
 

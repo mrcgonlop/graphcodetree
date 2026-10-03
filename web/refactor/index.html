@@ -19,34 +19,9 @@
   <div id="filters"></div>
   <div id="depth-selector"></div>
 
-  <div id="font-slider">
-    <label>Text size</label>
-    <input type="range" id="font-range" min="6" max="24" value="10" step="1" />
-    <span id="font-val">10</span>
-  </div>
-  <div id="graph-controls">
-    <div class="ctrl-group">
-      <label>Node size</label>
-      <input type="range" id="node-size-range" min="8" max="80" value="40" step="1" />
-      <span id="node-size-val">40</span>
-    </div>
-    <div class="ctrl-group">
-      <label>File pad</label>
-      <input type="range" id="pad-range" min="4" max="60" value="15" step="1" />
-      <span id="pad-val">15</span>
-    </div>
-    <div class="ctrl-group">
-      <label>Folder pad</label>
-      <input type="range" id="folder-pad-range" min="4" max="80" value="20" step="1" />
-      <span id="folder-pad-val">20</span>
-    </div>
-    <div class="ctrl-actions">
-      <button id="reset-view-btn" class="ctrl-btn">Reset View</button>
-      <button id="relayout-btn" class="ctrl-btn">Re&#8209;layout</button>
-    </div>
-  </div>
-  <div id="metrics">metrics…</div>
-  <details id="pipeline-panel" class="panel" open>
+
+
+  <details id="pipeline-panel" class="panel" closed>
     <summary>View &mdash; what the boxes are</summary>
     <div class="ctrl-group">
       <label>Detail</label>
@@ -64,8 +39,36 @@
     </div>
   </details>
 
-  <details id="params-panel" class="panel" open>
+  <details id="params-panel" class="panel" closed>
     <summary>Layout parameters</summary>
+
+    <div id="font-slider">
+      <label>Text size</label>
+      <input type="range" id="font-range" min="6" max="24" value="10" step="1" />
+      <span id="font-val">10</span>
+    </div>
+    <div id="graph-controls">
+      <div class="ctrl-group">
+        <label>Node size</label>
+        <input type="range" id="node-size-range" min="8" max="80" value="40" step="1" />
+        <span id="node-size-val">40</span>
+      </div>
+      <div class="ctrl-group">
+        <label>File pad</label>
+        <input type="range" id="pad-range" min="4" max="60" value="15" step="1" />
+        <span id="pad-val">15</span>
+      </div>
+      <div class="ctrl-group">
+        <label>Folder pad</label>
+        <input type="range" id="folder-pad-range" min="4" max="80" value="20" step="1" />
+        <span id="folder-pad-val">20</span>
+      </div>
+      <div class="ctrl-actions">
+        <button id="reset-view-btn" class="ctrl-btn">Reset View</button>
+        <button id="relayout-btn" class="ctrl-btn">Re&#8209;layout</button>
+      </div>
+    </div>
+
     <div class="param-group">Tree geometry &mdash; containment packing</div>
     <div class="ctrl-group">
       <label>Node gap X</label>
@@ -105,6 +108,7 @@
       <button id="reset-params-btn" class="ctrl-btn">Reset params</button>
     </div>
   </details>
+
   <div id="search-box">
     <div class="search-wrap">
       <input type="text" id="search" placeholder="Filter nodes by name…" />

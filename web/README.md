@@ -168,6 +168,18 @@ Two modes, toggled by the *Native labels* checkbox:
 | DOM overlay (default) | one absolutely-positioned `<div>` per element, repositioned on zoom/pan/layout | fixed pixel size — text stays readable when the graph is zoomed out |
 | Native labels | cytoscape's own `label: data(label)`, `text-valign: bottom` | scales with zoom, so it stays proportional to the circles |
 
+The checkbox owns the *boxes* too, and each box is named exactly once: with the
+overlay on, `main.js` starts every container at `label: ''`, so cytoscape draws
+no label for it and the bright overlay span is the only name; with native labels
+on, `applyLabelMode()` (`controls.js`) hands `data(label)` back to the file and
+folder containers (the overlay is hidden in that mode, so nothing else would).
+Letting a container keep its own `label` costs a second, dimmer copy of the name
+underneath the overlay's, which reads as "the text is dim" — and no amount of
+retuning `LABEL_COLORS` fixes that, because the copy is not on the palette.
+A box's span is named from the basename of its `_filePath`; the root box stands
+for the whole graph and has no path, so it falls back to the `label` the builder
+gave it (`'root'`) — that used to be the one name cytoscape painted itself.
+
 Line numbers (*Line numbers on labels*, on by default) are the start line of the
 node's span, `span.start.row + 1`. The DOM overlay appends it as a separate
 `.ln` span; the native path switches the element's label between `data(label)`
@@ -183,8 +195,11 @@ running through it does not eat it. Both modes read the same constants, which is
 the point of having them: this used to be five literals across four files, and
 the overlay had already drifted from itself (one pair when a label span was
 first built, a brighter pair on the next pan, so box names changed colour the
-moment you scrolled). `wiring.mjs` now pins that the two paths agree, so
-retuning the palette is a one-line edit in `constants.js` and nothing else.
+moment you scrolled). `main.js`'s container stylesheet is on the palette now as
+well — it carried the literal `#737aa2` for a folder name, which is exactly how
+that second copy drifted from the overlay. `wiring.mjs` pins that the two paths
+agree on the colours *and* that only one of them names a box, so retuning the
+palette is a one-line edit in `constants.js` and nothing else.
 
 ### Focus mode and edge direction (`focus.js`, `constants.js`)
 
@@ -328,7 +343,7 @@ real `graph.json`** inside headless cytoscape (`.cgtest/cytoscape.min.cjs`):
 
 ```powershell
 node --experimental-default-type=module .cgtest/validate.mjs   # layout invariants (44 assertions)
-node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focus, metadata, palette (245 assertions)
+node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focus, metadata, palette (252 assertions)
 ```
 
 - `validate.mjs` drives `state.js`, `builder.js`, `layout.js` and `hierarchy.js`
@@ -343,7 +358,10 @@ node --experimental-default-type=module .cgtest/wiring.mjs     # UI wiring, focu
   `index.html` turns a control into a no-op with no error anywhere.
 - its last section pins the one thing two independent code paths could silently
   disagree about: the colour of label text (`LABEL_COLORS`), asserted on the DOM
-  overlay's spans and on cytoscape's computed style in native-label mode.
+  overlay's spans and on cytoscape's computed style in native-label mode — plus
+  that a box is named *once* (the overlay's span while the overlay is on, the
+  native label when the checkbox hands the name over), including the root box,
+  which has no `_filePath` to take a basename from.
 
 Both print `FAIL <label>` per failing check and exit non-zero. Convention after
 touching `web/refactor/**`: run both, and for a guard that is *supposed* to
