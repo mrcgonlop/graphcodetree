@@ -16,3 +16,4 @@ tracing     = "0.1"
 
 # Language-specific grammars — pin these tightly
 tree-sitter-rust = "0.23"
+tree-sitter-python = "0.23"

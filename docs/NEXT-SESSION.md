@@ -1,11 +1,17 @@
 # Next session — multi-language extraction
 
-*Status note. This file began as a plan; **Phases 0–2 have since landed** — the
-seam exists (`profile.rs` + `walk.rs`, Rust as the first profile) and the CLI
-dispatches by extension. See "Status: Phases 0–2 landed" immediately below for
-what actually got built and the surprises worth knowing before Phase 3. Baseline
-after the refactor: `cargo test --workspace` = 16 passed / 1 ignored;
-`.cgtest/validate.mjs` = 44 assertions; `.cgtest/wiring.mjs` = 236 assertions.*
+*Status note. This file began as a plan; **Phases 0–3 have since landed** — the
+seam exists (`profile.rs` + `walk.rs`, Rust as the first profile), the CLI
+dispatches by extension, and **Python** is a registered profile whose output is
+byte-for-byte additive: the Rust snapshot is *set-identical* to the one the
+pre-Phase-3 binary produced from the same tree. Current baseline:
+`cargo test --workspace` = 27 passed / 1 ignored; `.cgtest/validate.mjs` = 44
+assertions; `.cgtest/wiring.mjs` = 236 assertions. See "Status: Phases 0–2
+landed" for the seam and "Phase 3 — Python, as landed" for what the second
+language cost and how "Rust unchanged" was proven. Landed as one commit,
+`extract: add Python as a second language profile` (`web/refactor/style.css`'
+unrelated drift was left out of it, and the `.cgtest` scratch from the proof was
+deliberately kept — see the carried-over backlog at the bottom).*
 
 ## Status: Phases 0–2 landed
 
@@ -19,7 +25,8 @@ The walker is language-agnostic now. Concretely:
 | `crates/extract/src/text.rs` | `collapse_ws` / `first_paragraph` only — the Rust-specific `doc_line`/`signature_of` moved into the profile. |
 | `crates/cli/src/main.rs` | `collect_source_files` (extension → profile via `for_extension`) and `ProfileExtractor(profile)` per file; extended `SKIP_DIRS`. |
 
-Three places the sketch in "The profile" below is **wrong** — read these before Phase 3:
+Three places the sketch in "The profile" below is **wrong** — read these before
+writing a profile:
 
 1. **`RustExtractor` is kept**, as a unit struct delegating to
    `walk::extract(&RUST, file)`, so every pre-existing test compiles and passes
@@ -38,6 +45,97 @@ Three places the sketch in "The profile" below is **wrong** — read these befor
    `Visibility::{Module, Protected}` now exist (purely additive — Rust output is
    unchanged). `web/refactor/app/constants.js` gained `class`/`interface`
    colours so the legend cannot lie.
+
+### Phase 3 — Python, as landed
+
+`crates/extract/src/python.rs` is a `LangProfile` plus the Python-only helpers
+and nine tests; `profile.rs` gained **one line** (`&crate::python::PYTHON`) and
+four `Option` hooks; `walk.rs` gained the sequencing for those hooks. Nothing on
+the Rust path changes behaviour, and that is now proven at set level rather than
+argued.
+
+| Seam added in Phase 3 | Why Python needed it | Rust value |
+|-----------------------|----------------------|------------|
+| `member_name: fn(Node, &[u8]) -> Option<String>` | a class attribute is an `assignment` whose *target* holds the name — there is no `name` field | `rust_member_name` = the old `child_by_field_name("name")`, unchanged |
+| `owned_doc: Option<fn(Node, &[u8]) -> Option<String>>` | a docstring is the first statement *inside* the suite, and a module docstring must land on the root node | `None` (Rust docs are leading siblings, already buffered) |
+| `unwrap_def: Option<fn(Node) -> Option<Node>>` | `decorated_definition` wraps `function_definition`/`class_definition`; unwrap once and classification, naming, emission and bodies all work | `None` |
+| `def_extra: Option<fn(Node, &[u8]) -> Vec<(String, Value)>>` | decorators become `attrs.extra.decorators` next to `depth` | `None` |
+| `BodyRole::ScopeMembers(&[(&str, NodeKind)])` | a class body is recursive *and* has members: `Class —Defines→ method`, and attributes as `Field`s — but Rust `mod`/`trait` must stay plain `Scope` | never selected (`Members` untouched) |
+
+Each hook is `Option`-typed (or a new variant nothing selects) and every new
+`RUST` field is `None` / equivalent, so the walker takes the same path it always
+took. Python-specific shapes worth knowing: `dotted_name`-flattening imports
+(`import a.b as c`, `from .x import (y, z)`, `*`), name-based visibility
+(`__x` → `private`, `_x` → `module`), `self.method()` as `method_unresolved` with
+the receiver kept as the hint, `.`-joined `qualified_name` (`qual_sep: "."`) and
+`lang: "python"`.
+
+#### Proof that the Rust path did not change
+
+The Phase 1 recipe (a `git worktree` of `HEAD`, the new binary, `golden-cmp.mjs`)
+was extended to a three-way control, because the golden `rust-repo.json` was
+taken from a *different tree* than the one under test — comparing it against the
+current tree conflates "the extractor changed" with "the input file changed":
+
+| # | Binary | Tree | Result |
+|---|--------|------|--------|
+| 1 | pre-Phase-3 (built in `.cgtest/oldtree`, a `HEAD` worktree) | `HEAD` | reproduces `rust-repo.json` exactly: 483 nodes / 2 381 edges, `stats` equal |
+| 2 | new | `HEAD` | **equal to #1** — identical node *and* edge sets, identical `stats`; only `file_count` differs (23 → 28) |
+| 3 | pre-Phase-3 | current tree | vs. the new binary on the current tree: **0 nodes and 0 edges lost**, +17 nodes / +49 edges — all of them inside the two new Python fixtures (`geometry.py` 14/39, `report.py` 3/10) |
+
+So identical input ⇒ identical output, and on the current tree the only
+difference can be *extra* Python nodes. Four consequences worth writing down:
+
+- **`file_count` is "files walked", not "files with nodes".** Five tracked `.py`
+  scratch files (`crates/extract/src/test_flow.py`, `_inspect_readme.py`,
+  `web/{analyze_callsites,fix_frontend,update_frontend}.py`) are now recognised,
+  read and ingested, but they define no `def`/`class` — and the root node is
+  `is_definition: false`, which `cg_ir::merge` drops — so they contribute
+  **0 nodes / 0 edges** and only move the counter 23 → 28. Not a regression.
+- **The two `data_flow` edges that vanish are a *source* change, not an extractor
+  change.** `.cgtest/dump-edges.mjs` names them; `rust-repo.json` holds them twice
+  (28 `data_flow` edges in total) and `rust-repo-after.json` holds them zero times
+  (40 in total):
+
+  ```text
+  2 -> 0   rust:.\crates\extract\src\text.rs#first_paragraph@0
+             -> rust:.\crates\extract\src\walk.rs#emit_def@0
+  ```
+
+  The rest of the delta is additive: the 14 new `data_flow` edges all originate in
+  `python.rs#tests::extract` (`tests::def_key` ×10, `tests::node` ×1,
+  `tests::sites` ×1, `lib.rs#diff` ×2) — the new Python tests' own
+  `let x = f(); g(x)` shapes. 28 − 2 + 14 = 40. Why the pair went: at `3e57722`
+  `walk_items` had `let doc = first_paragraph(&pending_docs);` and passed that
+  binding straight into `emit_def` from **both** the `ItemClass::Def` and the
+  `ItemClass::Impl` arm — two call sites, so two structurally identical edges
+  (`DataFlowEnricher` mints a fresh `EdgeId` per call site and never dedupes,
+  `data_flow.rs:97`). On the current tree the same `let` is followed by
+  `let doc = doc.take().or_else(|| profile.owned_doc…)`, so the *last* binding of
+  `doc` before those calls points at the `or_else` call — a method chain, which
+  `resolve_call_target` cannot resolve to a definition, so no edge is emitted.
+  That is the documented v2 gap (`data_flow.rs:19-21`), not a regression.
+  `.cgtest/dfprobe/lib.rs` reproduces it in one file: `direct()`
+  (`let d = producer(); consumer(d);`) keeps its edge, `chained()`
+  (`let mut d = producer(); let d = d.take().or_else(|| None); consumer(d);`)
+  loses it — 1 `data_flow` edge overall — and the pre-Phase-3 and new binaries
+  produce the **same set** on that file (identical `stats`, 17 edges). Control #3
+  again, at probe scale.
+- The 140 "span-only" node changes between `rust-repo.json` and the current
+  snapshot are the four modified `.rs` files reporting new byte offsets (same
+  identity, new offsets: `profile.rs` 59, `rust.rs` 34, `lib.rs` 29, `walk.rs`
+  18). The 89 *really* added nodes are `python.rs` (52), the three fixtures
+  (27: `geometry.py` 14, `widget.rs` 10, `report.py` 3) and ten items in the
+  shared files (`mod python;`, four `LangProfile` fields, `BodyRole::ScopeMembers`,
+  `rust_member_name`, `emit_members`, and the two new `profile.rs` tests). Nothing
+  was removed (`really removed: 0`); the numbers come from
+  `.cgtest/attrib-pair.mjs` plus `.cgtest/added-names.mjs`.
+- **The scratch tools behind all of this are in `.cgtest`** (all ESM: run them
+  with `node --experimental-default-type=module`): `golden-cmp.mjs`
+  (order-insensitive set compare), `attrib-pair.mjs` (added / removed / span-only),
+  `added-names.mjs` (identities, not counts), `edge-kinds.mjs` (lost edges by kind
+  × source file), `dump-edges.mjs` (per-kind edge dump) and `file-keys.mjs`
+  (distinct `key.file` + stats).
 
 ### Two surprises before you start
 
@@ -88,11 +186,26 @@ sites, data-flow annotations, and key stability across a body edit.
 Steps 3–4 are the *only* shared edits, one line each. If a language needs a
 sixth hook, that is the signal `LangProfile` is missing a concept: add the hook
 to *every* profile and let the walker own the sequencing — never special-case a
-language inside `walk.rs`. The registry tests in `profile.rs`
-(`registry_resolves_rust_by_lang_and_extension`,
-`unregistered_languages_and_extensions_are_absent_not_panics`) pin that
-`for_extension`/`for_lang` return `None` rather than panicking for languages
-that are not registered yet.
+language inside `walk.rs`.
+
+**What that cost in practice (Phase 3).** Python wanted four more hooks
+(`member_name`, `owned_doc`, `unwrap_def`, `def_extra`) and one more `BodyRole`
+variant (`ScopeMembers`) — all additive, all `None`/unselected for Rust, so the
+Rust path stays unchanged (proof in "Phase 3 — Python, as landed"). The rule
+held: each hook is a *concept* — "a member's name is not a `name` field", "the
+doc lives inside the definition", "a wrapper node hides the definition" — that a
+third grammar can reuse, and `walk.rs` still contains no language name and no
+grammar kind string. Treat the hook list as open by design; treat a grammar-kind
+string or a `Lang::` check inside `walk.rs` as the bug.
+
+The registry tests in `profile.rs` (`registry_resolves_rust_by_lang_and_extension`,
+the new `registry_resolves_python_by_lang_and_extension`,
+`unregistered_languages_and_extensions_are_absent_not_panics` and
+`every_profile_is_self_consistent`) pin that `for_extension`/`for_lang` return
+`None` rather than panicking for languages that are not registered yet, and that
+every registered profile's extensions resolve back to it. Phase 3 retargeted the
+"absent, not a panic" test from Python to TypeScript, and added the
+self-consistency sweep so a future profile cannot be registered half-way.
 
 **Phase 3 prompt (copy-paste):**
 
@@ -289,26 +402,41 @@ golden (order-insensitive — see above) and the CLI has no language-specific
 branch left. The "mixed directory" half of the criterion needs a second profile
 to exist, so it moves to Phase 3.
 
-### Phase 3 — Python (~half a day)
+### Phase 3 — Python (~half a day) — ✅ **done**
+
+> **Landed.** The checklist below is the plan it followed; it is kept for the
+> record, and the as-built account (hooks, fixtures, tests, evidence) is in
+> "Phase 3 — Python, as landed" at the top of this file. Nothing here is
+> outstanding except the `.cgtest` housekeeping noted at the bottom.
 
 > **Start from "Adding a language — the procedure, as built" at the top of this
 > file**, not from this list: it reflects what the seam actually looks like now
 > (and skips the `.scm` step below).
 
-- [ ] `crates/extract/Cargo.toml`: add `tree-sitter-python = "0.23"` (pin it; kind names drift between grammar releases — the same note already sits next to `tree-sitter-rust` in the workspace manifest).
-- [ ] `crates/extract/src/python.rs`: `pub static PYTHON: LangProfile` plus the Python-only helpers (`docstring`, `visibility_from_name`, `flatten_import`, `decorators`). See **Python specifics** below for the kinds.
+- [x] `crates/extract/Cargo.toml` **and** the workspace manifest: `tree-sitter-python = "0.23"`, pinned next to `tree-sitter-rust` (kind names drift between grammar releases).
+- [x] `crates/extract/src/python.rs`: `pub static PYTHON: LangProfile` plus the Python-only helpers — `python_grammar`, `python_classify`, `python_unwrap_def`, `python_def_extra` (decorators), `python_docstring`/`docstring_body`, `python_signature`, `python_visibility`/`visibility_from_name`, `python_body_of`, `python_member_name`, `python_call_target`, `python_callee_shape`, `python_binding`/`python_bound_names`, `python_ident_name`, `python_imports`/`push_import`/`import_path`/`dotted_segments`. See **Python specifics** below for the kinds.
 - [x] ~~`queries/python.scm` mirroring `queries/rust.scm`, and wire it into the profile-vs-query test (Phase 1)~~ — **dropped**: nothing loads the `.scm` (see D4), so register in `PROFILES` instead and write no query file.
-- [ ] Tests in `python.rs` following the existing convention: an inline
-      `const FIXTURE: &str = r#"..."#;` next to a `#[cfg(test)] mod tests`,
-      asserting the def keys, the `contains` tree, same-file call resolution
-      tags, the doc/signature/visibility attrs, and key stability under a body
-      edit (mirror `rust.rs:807-1000`).
-- [ ] A mixed-language test: two files in different languages in one
-      `flatten()`/store run — no key collisions, `key.lang` correct per node.
+- [x] Tests in `python.rs`: an inline `const FIXTURE: &str = r#"..."#;` in the
+      existing convention (module/class/function/decorator/import/docstring
+      shapes) asserting the def keys, the `contains` tree, call-resolution tags,
+      the doc/signature/visibility attrs, and key stability under a body edit
+      (mirroring `rust.rs`), **plus** real files under
+      `crates/extract/tests/fixtures/{python,rust}/` which the mixed test parses
+      — so a fixture that stops parsing fails the suite. Nine Python tests in
+      total: structure, imports, same-file calls, computed callees as `dynamic`,
+      data flow across bindings, key stability, error recovery, mixed directory,
+      and "the two profiles do not interchange".
+- [x] A mixed-language test: `one_directory_two_languages_flattens_without_collisions`
+      extracts a directory holding `geometry.py`, `report.py` and `widget.rs`,
+      `flatten()`s them, and asserts per-node `key.lang`, no key collisions, no
+      orphan symbols, one resolved same-file call per file, and that the Rust
+      half is exactly the Rust-only node/edge set.
 
-Exit criterion: the fixture's expected node/edge set matches and the tags on
-`self`-ish calls (Python: `self.helper()`) resolve the way Rust's `self_method`
-does.
+Exit criterion: **met**, and strengthened — the fixture census, `contains` tree,
+resolution tags, doc/signature/visibility attrs and key stability all match, and
+`self.helper()` lands as `method_unresolved` with `self` in the hint (the Python
+analogue of Rust's `self_method`). The stronger claim ("Rust output unchanged")
+is proven byte-for-byte in "Proof that the Rust path did not change".
 
 ### Phase 4 — JavaScript, then TypeScript/TSX if cheap (~half a day)
 
@@ -477,13 +605,27 @@ languages but the property: **adding one touches no shared file except
 ## Verification (copy-paste)
 
 ```powershell
-# Rust side — 16 passed / 1 ignored after the refactor
+# Rust side — 27 passed / 1 ignored after Phase 3 (16 / 1 before it)
 cargo test --workspace
 
 # Golden behaviour check: ORDER-INSENSITIVE, never `fc` (the snapshot order is
 # randomised per process — see "Two surprises before you start")
 cargo run -p cg-cli -- enrich . --output .cgtest/goldens/rust-repo-after.json
 node --experimental-default-type=module .cgtest/golden-cmp.mjs .cgtest/goldens/rust-repo.json .cgtest/goldens/rust-repo-after.json
+
+# "Rust unchanged" after a shared-file edit (Phase 3 recipe): compare the NEW
+# binary against the PREVIOUS one on the *same* tree, so neither file content nor
+# spans can confound the result. Expect: identical sets, `file_count` may differ.
+git worktree add .cgtest/oldtree HEAD --detach
+( cd .cgtest\oldtree; cargo build -p cg-cli )                     # pre-edit binary
+( cd <tree>; D:\proyects\graphcodetree\.cgtest\oldtree\target\debug\codegraph.exe enrich . --output old.json )
+( cd <tree>; D:\proyects\graphcodetree\target\debug\codegraph.exe enrich . --output new.json )
+node --experimental-default-type=module .cgtest/golden-cmp.mjs old.json new.json
+
+# Per-file attribution when the two runs DO differ: which files lost/gained nodes,
+# and are the losses real or just moved byte offsets?
+node --experimental-default-type=module .cgtest/attrib-pair.mjs old.json new.json
+node --experimental-default-type=module .cgtest/bucket-entries.mjs old.json new.json
 
 # New languages: enrich a mixed fixture tree and inspect the shape
 cargo run -p cg-cli -- enrich .\crates\extract\tests\fixtures --output .\out\mixed.json
@@ -494,7 +636,10 @@ node --experimental-default-type=module .cgtest/validate.mjs
 node --experimental-default-type=module .cgtest/wiring.mjs
 ```
 
-Checks specific to multi-language output, all expressible as tests:
+Checks specific to multi-language output, all expressible as tests — **all five
+exist now** (1–3 and 5 are asserted by
+`python::tests::one_directory_two_languages_flattens_without_collisions`, 4 by
+`keys_are_stable_under_body_edits` in *both* `python.rs` and `rust.rs`):
 
 - every node's `key.lang` equals the language of its file (and of its
   `span.file`'s extension);
@@ -517,7 +662,7 @@ Checks specific to multi-language output, all expressible as tests:
 | Key collisions across languages | `NodeKey::Symbol.lang` is part of the key — but write the test anyway, because two languages in *one* file (`.tsx` with embedded JSX, PHP with HTML) is where this actually bites |
 | Scope creep into type inference | the resolution-tag contract in `rust.rs:10-18` is the boundary: extraction records a hint, `cg-enrich` resolves. Language N must not add type analysis to the walker |
 | Phase 1 turns into a rewrite | freeze first (Phase 0) and diff JSON, not intuition: the golden file is the only judge of "no behaviour change" |
-| Python data flow silently produces nothing | assert one `flows_from` annotation in the Python fixture (`x = f(); g(x)`), not just "no crash" |
+| Python data flow silently produces nothing | assert one `flows_from` annotation in the Python fixture (`x = f(); g(x)`), not just "no crash" — ✔ asserted by `python::tests::tracks_data_flow_across_bindings` |
 
 ## Session order (as executed)
 
@@ -528,16 +673,24 @@ Checks specific to multi-language output, all expressible as tests:
 2. ~~Phase 1~~ — done, with the behaviour proof against a pre-refactor
    `git worktree` ("The evidence that Phase 1 changed nothing").
 3. ~~Phase 2~~ — done.
-4. **Next: Phase 3 (Python)**, following "Adding a language — the procedure, as
-   built": grammar crate → `python.rs` profile → one line in `PROFILES` → tests.
-   This is the first real test of the seam. If a Python profile forces an edit to
-   `walk.rs`, **stop and fix the abstraction**, do not special-case the language.
-5. Phase 4 (JavaScript) only if Phase 3's "no shared file touched" claim held.
-6. Phase 5 (enrichers) and Phase 6 (viewer + docs) last — they are what make the
-   result *usable* rather than merely extracted.
+4. ~~Phase 3 (Python)~~ — done. The seam held, with four **additive** hooks and
+   one new `BodyRole` variant in `walk.rs` (see "Phase 3 — Python, as landed");
+   the "no shared file touched" claim was therefore *not* literally true, and the
+   exit criterion was met anyway by proving the Rust output set-identical to the
+   pre-Phase-3 binary's on the same tree. Do not special-case languages inside
+   `walk.rs`; do not be surprised when a grammar needs a new *concept* hook.
+5. **Next: Phase 4 (JavaScript)** — the seam should now cost zero shared edits
+   beyond `PROFILES` + the manifest. Anything JS needs beyond the existing hooks
+   is a real design gap; `arrow_function`/D6 and `export`/visibility are the
+   likely pressure points.
+6. Phase 5 (enrichers) matters sooner for Python than for JS: `import_resolver.rs`
+   and `call_graph.rs` still assume Rust (`Lang::Rust` lookups, `::` splitting,
+   `mod`-file resolution), so `from a.b import c` produces no cross-file edge yet
+   even though extraction records the import. Phase 6 (viewer + docs) last — it is
+   what makes the result *usable* rather than merely extracted.
 
-Before starting Phase 3, all four of these must be green (they are, at the time
-of writing): `cargo test --workspace` (16 passed / 1 ignored),
+Before starting a phase, all four of these must be green; after Phase 3 they are
+`cargo test --workspace` (**27 passed / 1 ignored**),
 `node --experimental-default-type=module .cgtest/validate.mjs` (44),
 `node --experimental-default-type=module .cgtest/wiring.mjs` (236), and
 `cargo run -q -p cg-cli -- enrich .` end-to-end.
@@ -556,3 +709,6 @@ part of the multi-language push.
 - [ ] Visualizer polish: collapsible edge legend with swatches + per-kind toggles; "show only connected"; depth slider (the *depth filter* exists, the slider form does not); PNG export.
 - [ ] Export & stats: per-kind edge counts in the stats header (partially there), node/edge counts after filtering, a JSON schema documentation page.
 - [ ] Housekeeping: delete the scratch `.cgtest/_probe4*.mjs/txt` files; decide the fate of `.cgtest/drift.mjs` and `.cgtest/count.mjs`; regenerate `.cgtest/wiring-out.txt` / `validate-out.txt` as UTF-8 (`cmd /c … >`) if they are still wanted.
+- [ ] Housekeeping (Phase 3 leftovers, all untracked — `.cgtest` has only 15 tracked files and no ignore rule, so `git status` is noisy): the diff tools are worth keeping (`attrib-pair.mjs`, `bucket-entries.mjs`, `diff-entries.mjs`, `df-tally.mjs`, `added-names.mjs`, `edge-kinds.mjs`, `dump-edges.mjs`, `file-keys.mjs`); the one-shot outputs are not (`goldens/{new-on-headtree,oldbin-on-headtree,oldbin-on-maintree,phase3-enrich,wt-nopy-enrich}.json`, `old-build.txt`, `ws-final.txt`, `py-*.txt`, `pyprobe*/`, `probe3/`, `wt-nopy/`). `.cgtest/dfprobe/` (`lib.rs` + its two `enrich` outputs) is the smallest fixed repro of the data-flow shape — keep it while the v2 method-chain gap is open, then delete it with the rest. Consider a `.gitignore` entry for `.cgtest/*` except the harnesses. (Decided 2026-10-03: leave the scratch in place for now — the Phase 3 commit contains only source, fixtures and this doc.)
+- [ ] **`.cgtest/oldtree` is a registered worktree** (`git worktree list` shows it at `3e57722`, detached) — remove it with `git worktree remove --force .cgtest/oldtree` once the Phase-3 proof is no longer needed, otherwise the directory is not just scratch but an extra checkout.
+- [ ] `web/refactor/style.css` (+6/−6) is modified in the working tree and is **not** part of Phase 3: it brightens low-contrast labels (`#3b4261`→`#f5f5f8` on `.param-group`, `#565f89`→`#e9ebf3` on `.node-file`, `.member-sig`, `.ln`, `.tooltip`, and `.kind-file` `#414868`→`#ffffff`). Decide keep or revert before committing the multi-language work.

@@ -70,7 +70,15 @@ pub(crate) fn extract(
             ast_kind: profile.root_ast_kind.into(),
             span: Some(span_of(&file.path, tree.root_node())),
             is_definition: false,
-            attrs: NodeAttrs::default(),
+            // The root node itself can carry a doc (Python module docstrings);
+            // `owned_doc` is `None` for grammars whose docs are leading
+            // siblings, which leaves this identical to `NodeAttrs::default()`.
+            attrs: NodeAttrs {
+                doc: profile
+                    .owned_doc
+                    .and_then(|f| f(tree.root_node(), file.text.as_bytes())),
+                ..NodeAttrs::default()
+            },
         },
     );
 
@@ -130,8 +138,16 @@ fn walk_items<'a>(
             DocAction::Comment(None) => continue,
             DocAction::NotComment => {}
         }
-        let doc = first_paragraph(&pending_docs);
+        let mut doc = first_paragraph(&pending_docs);
         pending_docs.clear();
+
+        // A grammar can wrap a definition (`decorated_definition` in Python):
+        // unwrap it so classification, naming, emission and body handling all
+        // see the definition itself. `None` leaves `child` untouched.
+        let child = match profile.unwrap_def {
+            Some(unwrap) => unwrap(child).unwrap_or(child),
+            None => child,
+        };
 
         match (profile.classify)(child.kind()) {
             ItemClass::Transparent => {}
@@ -158,6 +174,11 @@ fn walk_items<'a>(
                 };
                 let name = txt(&name_n, ctx.src).to_string();
                 let kind = promoted_kind(ctx, parent, kind);
+                // A doc may live *inside* the definition (Python docstrings)
+                // rather than in the leading siblings already buffered.
+                let doc = doc
+                    .take()
+                    .or_else(|| profile.owned_doc.and_then(|f| f(child, ctx.src)));
                 let key = emit_def(ctx, parent, scope, child, kind, &name, doc, depth);
                 emitted.push(key.clone());
                 handle_body(ctx, child, &key, scope, &name, body, depth);
@@ -240,24 +261,50 @@ fn handle_body<'a>(
             }
         }
 
-        BodyRole::Members(table) => {
+        BodyRole::ScopeMembers(table) => {
             if let Some(body) = (profile.body_of)(node) {
-                let mut mcur = body.walk();
-                for m in body.named_children(&mut mcur) {
-                    let Some((_, mk)) = table.iter().find(|(k, _)| *k == m.kind()) else {
-                        continue;
-                    };
-                    let Some(mname_n) = m.child_by_field_name(profile.name_field) else {
-                        continue;
-                    };
-                    let mname = txt(&mname_n, ctx.src).to_string();
-                    let mdoc = (profile.prev_doc)(m, ctx.src);
-                    scope.push(name.to_string());
-                    emit_def(ctx, key, scope, m, *mk, &mname, mdoc, depth + 1);
-                    scope.pop();
-                }
+                scope.push(name.to_string());
+                emit_members(ctx, key, scope, body, table, depth + 1);
+                let members = walk_items(ctx, body, scope, key, depth + 1);
+                scope.pop();
+                ctx.defines_jobs.push((name.to_string(), members));
             }
         }
+
+        BodyRole::Members(table) => {
+            if let Some(body) = (profile.body_of)(node) {
+                scope.push(name.to_string());
+                emit_members(ctx, key, scope, body, table, depth + 1);
+                scope.pop();
+            }
+        }
+    }
+}
+
+/// Emits the statement nodes a `Members`/`ScopeMembers` table matches (Rust
+/// struct fields and enum variants, Python class attributes). A member gets a
+/// `Contains` edge from the enclosing definition but is not a definition of
+/// the body, so it takes no part in `Defines` wiring — matching Rust, where
+/// `Thing —Defines→ Thing::new` but not `Thing —Defines→ Thing::name`.
+fn emit_members<'a>(
+    ctx: &mut Ctx<'a, 'a>,
+    parent: &NodeKey,
+    scope: &[String],
+    body: Node<'a>,
+    table: &[(&'static str, NodeKind)],
+    depth: u32,
+) {
+    let profile = ctx.profile;
+    let mut mcur = body.walk();
+    for m in body.named_children(&mut mcur) {
+        let Some((_, mk)) = table.iter().find(|(k, _)| *k == m.kind()) else {
+            continue;
+        };
+        let Some(mname) = (profile.member_name)(m, ctx.src) else {
+            continue;
+        };
+        let mdoc = (profile.prev_doc)(m, ctx.src);
+        emit_def(ctx, parent, scope, m, *mk, &mname, mdoc, depth);
     }
 }
 
@@ -308,6 +355,11 @@ fn emit_def(
             extra: {
                 let mut m = BTreeMap::new();
                 m.insert("depth".into(), serde_json::json!(depth));
+                // Per-definition extras the grammar wants to surface (Python
+                // decorators); `None` adds nothing.
+                if let Some(def_extra) = profile.def_extra {
+                    m.extend(def_extra(node, ctx.src));
+                }
                 m
             },
         },

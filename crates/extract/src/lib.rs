@@ -29,6 +29,7 @@
 //! to re-key.
 
 mod profile;
+mod python;
 mod rust;
 mod snapshot;
 mod text;

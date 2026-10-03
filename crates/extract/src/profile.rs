@@ -47,8 +47,15 @@ pub enum BodyRole {
     /// No body handling (type aliases, macros).
     None,
     /// Recurse into the body with the item's name pushed onto the scope
-    /// (modules, traits, classes).
+    /// (modules, traits).
     Scope,
+    /// Like `Scope`, and the body's direct definitions become members of the
+    /// item, wired as `Type —Defines→ member` edges (Python classes:
+    /// `Class —Defines→ method`). Statements whose kind appears in the table
+    /// are emitted as member nodes as well (`Field`s: Python class
+    /// attributes). Rust `mod`/`trait` deliberately stay `Scope`, so this
+    /// variant is additive and cannot shift an existing profile's output.
+    ScopeMembers(&'static [(&'static str, NodeKind)]),
     /// Recurse with the name in scope, linking the body's direct children
     /// whose kind appears in the table as members (struct fields, enum
     /// variants).
@@ -149,6 +156,19 @@ pub struct LangProfile {
     pub simple_resolvable: &'static [NodeKind],
     /// Parent kinds under which a `Function` definition becomes a `Method`.
     pub method_parents: &'static [NodeKind],
+    /// Name of a member matched by a [`BodyRole::Members`] table (Rust: the
+    /// `name` field; Python: the target of the wrapped assignment). `None`
+    /// means the node is not a member and the walker skips it.
+    pub member_name: fn(Node, &[u8]) -> Option<String>,
+    /// A doc carried *inside* the definition instead of in leading siblings
+    /// (Python: the first statement of a suite when it is a bare string).
+    /// Consulted for the file node too, so module docstrings land on `File`.
+    pub owned_doc: Option<fn(Node, &[u8]) -> Option<String>>,
+    /// Unwrap a grammar-level definition wrapper to the definition it wraps
+    /// (Python `decorated_definition` → its `definition` field), so
+    /// classification, naming, emission and body handling all see the real
+    /// definition. `None` for grammars that do not wrap.
+    pub unwrap_def: Option<fn(Node) -> Option<Node>>,
 
     // ── call / dependency machinery ───────────────────────────────────
     /// Grammar kinds that are call sites (`call_expression`, ...).
@@ -176,10 +196,13 @@ pub struct LangProfile {
     pub impl_info: Option<fn(Node, &[u8]) -> Option<ImplInfo>>,
     /// Name of a body-less external module declaration (`mod foo;`).
     pub mod_decl_name: Option<fn(Node, &[u8]) -> Option<String>>,
+    /// Per-definition `extra` entries to surface next to `depth` (Python:
+    /// `decorators`). `None` for grammars with nothing to add.
+    pub def_extra: Option<fn(Node, &[u8]) -> Vec<(String, serde_json::Value)>>,
 }
 
 /// The registry the CLI and tests iterate. Adding a language is one line here.
-pub static PROFILES: &[&LangProfile] = &[&crate::rust::RUST];
+pub static PROFILES: &[&LangProfile] = &[&crate::rust::RUST, &crate::python::PYTHON];
 
 /// Every known profile, in registration order.
 pub fn all() -> &'static [&'static LangProfile] {
@@ -213,6 +236,7 @@ impl Extractor for ProfileExtractor {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::python::PYTHON;
     use crate::rust::RUST;
 
     #[test]
@@ -228,13 +252,42 @@ mod tests {
     }
 
     #[test]
+    fn registry_resolves_python_by_lang_and_extension() {
+        let by_ext = for_extension("py").expect("`py` is registered");
+        assert_eq!(by_ext.lang, Lang::Python);
+        assert_eq!(by_ext.qual_sep, ".");
+        let by_lang = for_lang(Lang::Python).expect("Python profile is registered");
+        assert!(
+            std::ptr::eq(by_ext, by_lang),
+            "both lookups must return the same profile"
+        );
+        assert!(all().iter().any(|p| std::ptr::eq(*p, &PYTHON)));
+    }
+
+    #[test]
     fn unregistered_languages_and_extensions_are_absent_not_panics() {
-        // Adding Python is a new profile module + one line in `PROFILES`;
+        // Adding a language is a new profile module + one line in `PROFILES`;
         // until then these lookups must return `None`, never panic.
-        assert!(for_lang(Lang::Python).is_none());
-        assert!(for_extension("py").is_none());
+        assert!(for_lang(Lang::TypeScript).is_none());
+        assert!(for_extension("ts").is_none());
         assert!(for_extension("").is_none());
         // No partial matching: `rss` must not hit the `rs` profile.
         assert!(for_extension("rss").is_none());
+        // Nor `pyc` the `py` profile.
+        assert!(for_extension("pyc").is_none());
+    }
+
+    #[test]
+    fn every_profile_is_self_consistent() {
+        for p in all() {
+            assert!(for_lang(p.lang).is_some(), "{:?} not reachable by lang", p.lang);
+            for ext in p.extensions {
+                assert!(!ext.starts_with('.'), "{ext} must not carry a dot");
+                let found = for_extension(ext).unwrap_or_else(|| panic!("{ext} not reachable"));
+                assert_eq!(found.lang, p.lang, "`{ext}` maps to the wrong profile");
+            }
+            assert!(!p.qual_sep.is_empty());
+            assert!(!p.call_kinds.is_empty());
+        }
     }
 }

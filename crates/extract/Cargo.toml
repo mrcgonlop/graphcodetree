@@ -7,6 +7,7 @@ edition = "2021"
 cg-ir            = { path = "../ir" }
 tree-sitter      = { workspace = true }
 tree-sitter-rust = "0.23"   # add to workspace deps; pin grammar versions — kind names drift
+tree-sitter-python = "0.23" # pinned; kind names drift between grammar releases
 serde            = { workspace = true }
 serde_json       = { workspace = true }
 thiserror        = { workspace = true }

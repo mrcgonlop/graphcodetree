@@ -64,6 +64,9 @@ pub static RUST: LangProfile = LangProfile {
     item_kinds: RUST_ITEM_KINDS,
     simple_resolvable: RUST_SIMPLE_RESOLVABLE,
     method_parents: &[NodeKind::ImplBlock, NodeKind::Trait],
+    member_name: rust_member_name,
+    owned_doc: None,
+    unwrap_def: None,
 
     call_kinds: RUST_CALL_KINDS,
     call_target: rust_call_target,
@@ -77,6 +80,7 @@ pub static RUST: LangProfile = LangProfile {
 
     impl_info: Some(rust_impl_info),
     mod_decl_name: Some(rust_mod_decl_name),
+    def_extra: None,
 };
 
 fn rust_grammar() -> tree_sitter::Language {
@@ -240,6 +244,12 @@ fn rust_visibility(n: Node, src: &[u8]) -> Visibility {
 fn rust_body_of(n: Node) -> Option<Node> {
     n.child_by_field_name("body")
         .or_else(|| n.child_by_field_name("value"))
+}
+
+/// Struct fields and enum variants carry their name in the `name` field.
+fn rust_member_name(n: Node, src: &[u8]) -> Option<String> {
+    n.child_by_field_name("name")
+        .map(|m| txt(&m, src).to_string())
 }
 
 // --- call sites -----------------------------------------------------------
